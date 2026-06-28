@@ -18,7 +18,7 @@
 
 **JIRA Time Tracking Dashboard** là ứng dụng web đơn trang (Single Page Application) được xây dựng với React 19, cho phép nhập và phân tích dữ liệu thời gian làm việc từ JIRA qua nhiều kênh khác nhau. 
 
-Ứng dụng hỗ trợ nhập dữ liệu từ **CSV**, **HTML export** từ Excel, **JIRA API** (Basic Auth), và **Bookmarklet** — giúp bạn linh hoạt lựa chọn phương thức phù hợp nhất với quy trình hiện tại.
+Ứng dụng hiện hỗ trợ nhập dữ liệu từ **HTML export** từ Excel, **JIRA API** (Basic Auth), và **Bookmarklet** — giúp bạn linh hoạt lựa chọn phương thức phù hợp nhất với quy trình hiện tại. (Hỗ trợ import file **CSV** sẽ được bổ sung trong phiên bản sau.)
 
 Sau khi nhập dữ liệu, dashboard cung cấp:
 - **Phân tích effort** với biểu đồ trực quan (Chart.js)
@@ -36,8 +36,7 @@ Sau khi nhập dữ liệu, dashboard cung cấp:
 
 | Phương thức | Mô tả |
 |-------------|-------|
-| **CSV** | Export Worklog từ JIRA → kéo thả file CSV vào dashboard |
-| **HTML** | Export Excel (HTML Table) từ JIRA → import qua sidebar |
+| **HTML** | Export Excel (HTML Table) từ JIRA (All fields) → import qua sidebar |
 | **JIRA API** | Nhập URL, Email, API Token, Project Key → tự động fetch dữ liệu |
 | **Bookmarklet** | Tạo bookmark → click trên tab JIRA → tự động thu thập và gửi dữ liệu |
 
@@ -222,11 +221,6 @@ npm run electron:build
 
 ### 1. Nhập dữ liệu
 
-#### CSV
-1. Trong JIRA, vào tab **Issues** → **Export** → **CSV (All fields)**
-2. Kéo thả file CSV vào khu vực **Upload Zone** trên dashboard
-3. Dữ liệu tự động được parse và hiển thị
-
 #### HTML (Excel export)
 1. Trong JIRA, vào tab **Issues** → **Export** → **Excel (HTML)**
 2. Mở file HTML trong trình duyệt (hoặc kéo vào dashboard)
@@ -245,6 +239,8 @@ npm run electron:build
 1. Tạo bookmark mới trong trình duyệt
 2. Dán đoạn script bookmarklet (xem trong sidebar → Bookmarklet)
 3. Mở tab JIRA, click bookmark → tự động thu thập và gửi dữ liệu
+
+> ⚠️ **Sắp tới:** Hỗ trợ import file CSV sẽ được bổ sung trong phiên bản sau.
 
 ### 2. Khám phá Dashboard
 
@@ -406,7 +402,7 @@ graph TD
 
 ### Luồng dữ liệu
 
-1. **Import**: User nhập dữ liệu qua CSV / HTML / API / Bookmarklet
+1. **Import**: User nhập dữ liệu qua HTML / API / Bookmarklet
 2. **Parse**: File được parse bởi các utility (`csvParser`, `htmlParser`, `jiraApi`)
 3. **Dispatch**: Dữ liệu được gửi vào `AppContext` qua action `SET_TASKS`
 4. **Label sync**: Label auto-rule chạy, gán nhãn tự động
