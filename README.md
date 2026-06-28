@@ -181,6 +181,43 @@ npm run electron:dist
 
 ---
 
+## 🔨 Build file .exe (Windows)
+
+### Yêu cầu
+- **Node.js 18+** — tải từ https://nodejs.org
+- **Windows** — bản build `--win portable` chỉ hoạt động trên Windows
+- **Git** — để clone repository
+
+### Các bước
+```bash
+# 1. Clone repository
+git clone https://github.com/thongnmetc-arch/jira-dashboard.git
+cd jira-dashboard
+
+# 2. Cài đặt dependencies
+npm install
+
+# 3. Build file .exe portable (1 file duy nhất, không cần cài đặt)
+npm run electron:build
+```
+
+Sau khi build xong, file `JIRA-Dashboard.exe` sẽ nằm trong thư mục `release/`.
+Copy file này sang máy khác là chạy được ngay — không cần cài Node.js hay bất kỳ thứ gì khác.
+
+### Diễn giải lệnh build
+```
+npm run electron:build
+  ├── vite build                    ← Build React app → thư mục dist/
+  └── electron-builder --win portable  ← Đóng gói thành 1 file .exe
+```
+
+### Lưu ý
+- File `.exe` có dung lượng ~100-150 MB (bao gồm Chromium + Node.js runtime)
+- Chỉ cần copy 1 file `JIRA-Dashboard.exe` — chạy trực tiếp, không cần cài đặt
+- Nếu dùng JIRA API trong app Electron, đảm bảo máy có kết nối mạng đến JIRA server
+
+---
+
 ## 📋 Cách sử dụng
 
 ### 1. Nhập dữ liệu
