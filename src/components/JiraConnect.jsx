@@ -1,0 +1,623 @@
+import { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import { Wifi, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, Info, LogIn, LogOut } from 'lucide-react';
+import { useApp } from '../context/AppContext';
+import { testJiraConnection, fetchJiraIssues } from '../utils/jiraApi';
+
+export default function JiraConnect() {
+  const { state, dispatch } = useApp();
+
+  const [form, setForm] = useState({ url: '', email: '', token: '', projectKey: '', jql: '' });
+  const [showToken, setShowToken] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [jiraError, setJiraError] = useState('');
+  const [cookieLoginStatus, setCookieLoginStatus] = useState(null); // null | 'loading' | 'loggedin' | 'error'
+
+  // Electron: check cookie-based login status on mount + listen for login success
+  useEffect(() => {
+    let cleanup = null;
+
+    async function init() {
+      if (window.electronAPI?.isElectron) {
+        // Check if cookies exist
+        try {
+          const status = await window.electronAPI.jiraLoginStatus();
+          if (status.loggedIn) {
+            setCookieLoginStatus('loggedin');
+          }
+        } catch (e) {
+          console.warn('Failed to check cookie login status:', e);
+        }
+
+        // Listen for login-success from main process
+        cleanup = window.electronAPI.onLoginSuccess(() => {
+          setCookieLoginStatus('loggedin');
+        });
+      }
+    }
+
+    init();
+
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, []);
+
+  // On mount, try loading saved config (from Electron store or localStorage)
+  useEffect(() => {
+    async function loadSavedConfig() {
+      // Electron: load from persistent store first
+      if (window.electronAPI?.isElectron) {
+        try {
+          const saved = await window.electronAPI.storeGet('jira-config');
+          if (saved) {
+            setForm({
+              url: saved.url || 'https://20.84.97.109:3033',
+              email: saved.email || 'thongnm@etc.vn',
+              token: saved.token || '',
+              projectKey: saved.projectKey || 'BXDBE',
+              jql: saved.jql || '',
+            });
+            return;
+          }
+        } catch (e) {
+          console.warn('Failed to load Electron store, falling back to localStorage:', e);
+        }
+      }
+
+      // Fallback: load from context (localStorage)
+      if (state.jiraConfig.url && state.jiraConfig.projectKey) {
+        setForm({ url: state.jiraConfig.url, email: state.jiraConfig.email, token: state.jiraConfig.token, projectKey: state.jiraConfig.projectKey, jql: state.jiraConfig.jql || '' });
+      } else {
+        // Set defaults for self-hosted JIRA
+        setForm({ url: 'https://20.84.97.109:3033', email: '', token: '', projectKey: 'BXDBE', jql: '' });
+      }
+    }
+    loadSavedConfig();
+  }, []);
+
+  const handleFormChange = useCallback((field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    if (jiraError) setJiraError('');
+  }, [jiraError]);
+
+  const handleConnect = useCallback(async () => {
+    // Validate
+    const { url, email, token, projectKey } = form;
+    if (!url.trim()) { setJiraError('Vui lòng nhập URL JIRA.'); return; }
+    if (!email.trim()) { setJiraError('Vui lòng nhập email.'); return; }
+    if (!token.trim()) { setJiraError('Vui lòng nhập API Token.'); return; }
+    if (!projectKey.trim()) { setJiraError('Vui lòng nhập Project Key.'); return; }
+
+    // Basic URL validation
+    try {
+      const parsed = new URL(url);
+      if (!parsed.protocol.startsWith('http')) {
+        setJiraError('URL phải bắt đầu bằng http:// hoặc https://.');
+        return;
+      }
+    } catch {
+      setJiraError('URL không hợp lệ. Vui lòng nhập URL đầy đủ (vd: https://jira.company.com).');
+      return;
+    }
+
+    setConnecting(true);
+    setJiraError('');
+
+    // Step 1: Test connection first
+    const testResult = await testJiraConnection(url.trim(), email.trim(), token.trim());
+
+    if (!testResult.success) {
+      setJiraError(testResult.error);
+      setConnecting(false);
+      return;
+    }
+
+    // Step 2: Fetch issues
+    try {
+      const tasks = await fetchJiraIssues(url.trim(), email.trim(), token.trim(), projectKey.trim().toUpperCase(), form.jql);
+
+      if (tasks.length === 0) {
+        setJiraError('Không tìm thấy công việc nào trong project "' + projectKey.trim().toUpperCase() + '". Kiểm tra lại Project Key.');
+        setConnecting(false);
+        return;
+      }
+
+      // Compute stats
+      const totalHr = tasks.reduce((s, t) => s + t.timeSpentHr, 0);
+      const totalEst = tasks.reduce((s, t) => s + t.estimateHr, 0);
+      const stats = `${tasks.length} công việc · ${totalHr.toFixed(1)} giờ đã log · ${totalEst.toFixed(1)} giờ ước tính`;
+
+      // Electron: save config to persistent store (not localStorage, for security)
+      const configToSave = { url: url.trim(), email: email.trim(), token: token.trim(), projectKey: projectKey.trim().toUpperCase(), jql: form.jql };
+      if (window.electronAPI?.isElectron) {
+        try {
+          await window.electronAPI.storeSet('jira-config', configToSave);
+        } catch (e) {
+          console.warn('Failed to save config to Electron store:', e);
+        }
+      }
+
+      // Save config in context (also persisted to localStorage via effect)
+      dispatch({ type: 'SET_JIRA_CONFIG', payload: configToSave });
+      dispatch({ type: 'SET_JIRA_CONNECTED', payload: true });
+      dispatch({ type: 'SET_DATA_SOURCE', payload: 'jira' });
+      dispatch({ type: 'SET_FILE_INFO', payload: { fileName: projectKey.trim().toUpperCase(), fileStats: stats } });
+      dispatch({ type: 'SET_TASKS', payload: tasks });
+      dispatch({ type: 'SET_OT_LEAVE', payload: { otTotal: 0, leaveTotal: 0 } });
+      try { localStorage.removeItem('jira-dash-ot-leave'); } catch(e) {}
+      dispatch({ type: 'SET_JQL_USED', payload: form.jql ? form.jql.trim().replace(/\n/g, ' ') : '' });
+      dispatch({ type: 'SET_LAST_REFRESH_TIME', payload: new Date().toISOString() });
+
+    } catch (err) {
+      setJiraError(err.message || 'Lỗi kết nối không xác định.');
+    } finally {
+      setConnecting(false);
+    }
+  }, [form, dispatch]);
+
+  // Allow reconnecting with different credentials
+  const handleReconnect = useCallback(() => {
+    dispatch({ type: 'SET_JIRA_CONNECTED', payload: false });
+  }, [dispatch]);
+
+  // ── Cookie-based login (Electron SSO) ──────────────────────────────
+
+  // Open JIRA login window (Microsoft SSO)
+  const handleCookieLogin = useCallback(async () => {
+    setJiraError('');
+    setCookieLoginStatus('loading');
+    try {
+      await window.electronAPI.jiraLogin();
+      // The login-success event (caught by useEffect above) will set status to 'loggedin'
+    } catch (err) {
+      setJiraError('Không thể mở cửa sổ đăng nhập JIRA: ' + err.message);
+      setCookieLoginStatus('error');
+    }
+  }, []);
+
+  // After cookie login succeeds, fetch data using cookie-based API
+  const handleCookieFetchData = useCallback(async (projectKey) => {
+    if (!projectKey) {
+      setJiraError('Vui lòng nhập Project Key.');
+      return;
+    }
+    setConnecting(true);
+    setJiraError('');
+
+    try {
+      // Step 1: Test connection with cookies (no token needed)
+      const testResult = await testJiraConnection('', '', '');
+      if (!testResult.success) {
+        setJiraError(testResult.error);
+        setConnecting(false);
+        return;
+      }
+
+      // Step 2: Fetch issues using cookie-based API (no url/email/token)
+      const tasks = await fetchJiraIssues('', '', '', projectKey.trim().toUpperCase(), form.jql);
+
+      if (tasks.length === 0) {
+        setJiraError('Không tìm thấy công việc nào trong project "' + projectKey.trim().toUpperCase() + '". Kiểm tra lại Project Key.');
+        setConnecting(false);
+        return;
+      }
+
+      // Compute stats
+      const totalHr = tasks.reduce((s, t) => s + t.timeSpentHr, 0);
+      const totalEst = tasks.reduce((s, t) => s + t.estimateHr, 0);
+      const stats = `${tasks.length} công việc · ${totalHr.toFixed(1)} giờ đã log · ${totalEst.toFixed(1)} giờ ước tính`;
+
+      // Save JIRA config (project key only, no token needed)
+      const configToSave = { url: JIRA_URL, email: '', token: '', projectKey: projectKey.trim().toUpperCase(), jql: form.jql };
+      if (window.electronAPI?.isElectron) {
+        try {
+          await window.electronAPI.storeSet('jira-config', configToSave);
+        } catch (e) {
+          console.warn('Failed to save config to Electron store:', e);
+        }
+      }
+
+      dispatch({ type: 'SET_JIRA_CONFIG', payload: configToSave });
+      dispatch({ type: 'SET_JIRA_CONNECTED', payload: true });
+      dispatch({ type: 'SET_DATA_SOURCE', payload: 'jira' });
+      dispatch({ type: 'SET_FILE_INFO', payload: { fileName: projectKey.trim().toUpperCase(), fileStats: stats } });
+      dispatch({ type: 'SET_TASKS', payload: tasks });
+      dispatch({ type: 'SET_OT_LEAVE', payload: { otTotal: 0, leaveTotal: 0 } });
+      try { localStorage.removeItem('jira-dash-ot-leave'); } catch(e) {}
+      dispatch({ type: 'SET_JQL_USED', payload: form.jql ? form.jql.trim().replace(/\n/g, ' ') : '' });
+      dispatch({ type: 'SET_LAST_REFRESH_TIME', payload: new Date().toISOString() });
+    } catch (err) {
+      setJiraError(err.message || 'Lỗi kết nối không xác định.');
+    } finally {
+      setConnecting(false);
+    }
+  }, [form, dispatch]);
+
+  // Auto-fetch data when cookie login succeeds (if user has already filled project key)
+  useEffect(() => {
+    let cleanup = null;
+    if (window.electronAPI?.isElectron) {
+      cleanup = window.electronAPI.onLoginSuccess(async () => {
+        setCookieLoginStatus('loggedin');
+        // If user already entered a project key, auto-fetch
+        if (form.projectKey.trim()) {
+          await handleCookieFetchData(form.projectKey);
+        }
+      });
+    }
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, [form.projectKey, handleCookieFetchData]);
+
+  const JIRA_URL = 'https://20.84.97.109:3033';
+
+  return (
+    <motion.div
+      key="jira-connect"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+      className="w-full max-w-lg mx-auto"
+    >
+      <div className="space-y-4">
+            {/* Previously connected info */}
+            {state.jiraConnected && state.jiraConfig.projectKey && (
+              <div className="p-3 rounded-lg bg-[var(--success)]/10 border border-[var(--success)]/30 text-sm flex items-start gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-[var(--success)] mt-0.5 flex-shrink-0" />
+                <div className="text-[var(--text-primary)]">
+                  Đã kết nối <strong>{state.jiraConfig.projectKey}</strong> (
+                  <span className="text-[var(--text-secondary)]">{state.jiraConfig.url}</span>)
+                  <br />
+                  <span className="text-xs text-[var(--text-tertiary)]">
+                    <button
+                      onClick={handleReconnect}
+                      className="text-[var(--accent)] hover:underline cursor-pointer"
+                    >
+                      Kết nối lại
+                    </button>
+                    {' · '}
+                    <button
+                      onClick={() => dispatch({ type: 'RESET' })}
+                      className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:underline cursor-pointer"
+                    >
+                      Quay lại
+                    </button>
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Electron: In-app JIRA login (SSO) */}
+            {window.electronAPI?.isElectron && (
+              <div className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center gap-2 mb-3">
+                  <LogIn className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-semibold text-blue-800 dark:text-blue-300">
+                    Đăng nhập JIRA (SSO)
+                  </span>
+                  {cookieLoginStatus === 'loggedin' && (
+                    <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full ml-auto">
+                      Đã đăng nhập
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-xs text-blue-600 dark:text-blue-400 mb-3">
+                  Đăng nhập qua Microsoft SSO ngay trong ứng dụng. Không cần API Token.
+                </p>
+
+                {cookieLoginStatus === 'loggedin' ? (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={form.projectKey}
+                      onChange={(e) => handleFormChange('projectKey', e.target.value.toUpperCase())}
+                      placeholder="BXDBE"
+                      className="input-like w-full uppercase text-sm"
+                      disabled={connecting}
+                    />
+                    <button
+                      onClick={() => handleCookieFetchData(form.projectKey)}
+                      disabled={connecting || !form.projectKey.trim()}
+                      className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      {connecting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Đang tải dữ liệu...
+                        </>
+                      ) : (
+                        <>
+                          <Wifi className="w-4 h-4" />
+                          Tải dữ liệu từ JIRA
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await window.electronAPI.jiraLogout();
+                        setCookieLoginStatus(null);
+                      }}
+                      className="w-full py-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <LogOut className="w-3 h-3" />
+                      Đăng xuất
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleCookieLogin}
+                    disabled={cookieLoginStatus === 'loading'}
+                    className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    {cookieLoginStatus === 'loading' ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Đang mở cửa sổ đăng nhập...
+                      </>
+                    ) : (
+                      <>
+                        <LogIn className="w-4 h-4" />
+                        Đăng nhập JIRA (Microsoft SSO)
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* URL */}
+            <div>
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
+                URL JIRA
+              </label>
+              <input
+                type="text"
+                value={form.url}
+                onChange={(e) => handleFormChange('url', e.target.value)}
+                placeholder="https://jira.company.com"
+                className="input-like w-full"
+                disabled={connecting}
+              />
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
+                Email
+              </label>
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => handleFormChange('email', e.target.value)}
+                placeholder="user@company.com"
+                className="input-like w-full"
+                disabled={connecting}
+              />
+            </div>
+
+            {/* API Token */}
+            <div>
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
+                API Token
+              </label>
+              <div className="relative">
+                <input
+                  type={showToken ? 'text' : 'password'}
+                  value={form.token}
+                  onChange={(e) => handleFormChange('token', e.target.value)}
+                  placeholder="••••••••••••••••"
+                  className="input-like w-full pr-10"
+                  disabled={connecting}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowToken(!showToken)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer p-1"
+                  tabIndex={-1}
+                >
+                  {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Project Key */}
+            <div>
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
+                Project Key
+              </label>
+              <input
+                type="text"
+                value={form.projectKey}
+                onChange={(e) => handleFormChange('projectKey', e.target.value.toUpperCase())}
+                placeholder="BXDBE"
+                className="input-like w-full uppercase"
+                disabled={connecting}
+              />
+            </div>
+
+            {/* JQL Filter */}
+            <div>
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+                JQL (tùy chọn)
+              </label>
+              <textarea
+                value={form.jql}
+                onChange={(e) => handleFormChange('jql', e.target.value)}
+                placeholder={`project = "BXDBE" ORDER BY created DESC`}
+                rows={3}
+                className="w-full px-3 py-2 text-sm bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 focus:border-[var(--accent)] resize-none font-mono"
+                disabled={connecting}
+              />
+              <p className="text-xs text-[var(--text-tertiary)] mt-1">
+                Để trống để lấy tất cả issue trong project.
+              </p>
+            </div>
+
+            {/* Security warning */}
+            <div className="flex items-start gap-2 text-xs text-[var(--warning)] px-1">
+              <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+              <span>{window.electronAPI?.isElectron
+                ? 'Token được lưu an toàn trong ổ cứng (Electron userData). Dùng "Đăng nhập JIRA (SSO)" để không cần token.'
+                : 'Token được lưu trong trình duyệt. Không dùng trên máy công cộng.'}</span>
+            </div>
+
+            {/* Error message */}
+            {jiraError && (
+              <div className="p-3 rounded-lg bg-[var(--danger)]/10 border border-[var(--danger)]/30 text-sm flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-[var(--danger)] mt-0.5 flex-shrink-0" />
+                <span className="text-[var(--danger)] whitespace-pre-line">{jiraError}</span>
+              </div>
+            )}
+
+            {/* Connect button */}
+            <button
+              onClick={handleConnect}
+              disabled={connecting}
+              className="w-full py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              {connecting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Đang kết nối...
+                </>
+              ) : (
+                <>
+                  <Wifi className="w-4 h-4" />
+                  {state.jiraConnected ? 'Kết nối lại & Tải dữ liệu' : 'Kết nối & Tải dữ liệu'}
+                </>
+              )}
+            </button>
+
+            {/* Bookmarklet Section */}
+            <div className="mt-6 pt-6 border-t border-[var(--border-primary)]">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-sm font-semibold text-[var(--text-secondary)]">📌 Không cần API Token</span>
+                <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">Làm 1 lần</span>
+              </div>
+              
+              <p className="text-xs text-[var(--text-tertiary)] mb-4">
+                Tạo 1 bookmark trên thanh trình duyệt. Mỗi lần cần: <strong>mở JIRA → click bookmark → Dashboard tự mở</strong>.
+                Dùng cookie đăng nhập sẵn — không cần quyền admin, không cần API token.
+              </p>
+              
+              {/* Step 1: Copy code */}
+              <div className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-3">
+                <p className="text-sm font-semibold text-green-800 dark:text-green-300 mb-2">
+                  📋 Bước 1: Copy đoạn code này
+                </p>
+                <div className="relative">
+                  <textarea
+                    readOnly
+                    value={getBookmarkletCode(form.projectKey, form.jql)}
+                    rows={4}
+                    className="w-full text-xs font-mono bg-white dark:bg-slate-900 border border-green-300 dark:border-green-700 rounded-lg p-3 resize-none focus:outline-none text-[var(--text-primary)]"
+                    onClick={(e) => e.target.select()}
+                  />
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(getBookmarkletCode(form.projectKey, form.jql));
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    className="absolute top-2 right-2 text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition-colors font-medium"
+                  >
+                    {copied ? '✓ Đã copy!' : '📋 Copy'}
+                  </button>
+                </div>
+              </div>
+              
+              {/* Step 2: Create bookmark */}
+              <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-3">
+                <p className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-2">
+                  🔖 Bước 2: Tạo bookmark
+                </p>
+                <ol className="list-decimal pl-4 space-y-2 text-xs text-blue-700 dark:text-blue-400">
+                  <li>Nhấn <kbd className="bg-white dark:bg-blue-900 px-1.5 py-0.5 rounded border text-xs font-mono">Ctrl+Shift+B</kbd> để hiện thanh bookmark</li>
+                  <li><strong>Click chuột phải</strong> vào thanh bookmark → chọn <strong>"Thêm trang..."</strong></li>
+                  <li>Ô <strong>Tên</strong>: điền <code className="bg-white dark:bg-blue-900 px-1 rounded">JIRA Sync</code></li>
+                  <li>Ô <strong>URL</strong>: <strong>paste</strong> đoạn code đã copy ở Bước 1</li>
+                  <li>Nhấn <strong>Lưu</strong></li>
+                </ol>
+              </div>
+              
+              {/* Step 3: Use */}
+              <div className="bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800 rounded-lg p-4 mb-3">
+                <p className="text-sm font-semibold text-purple-800 dark:text-purple-300 mb-2">
+                  ✅ Bước 3: Dùng hàng ngày
+                </p>
+                <ol className="list-decimal pl-4 space-y-1 text-xs text-purple-700 dark:text-purple-400">
+                  <li>Mở <strong>tab JIRA</strong> (đã đăng nhập)</li>
+                  <li><strong>Click JIRA Sync</strong> trên thanh bookmark</li>
+                  <li>Dashboard <strong>tự động mở</strong> trong tab mới với dữ liệu!</li>
+                </ol>
+              </div>
+              
+              <div className="text-xs text-[var(--text-tertiary)] flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                Đang chờ dữ liệu từ JIRA...
+              </div>
+            </div>
+
+
+
+          </div>
+    </motion.div>
+  );
+}
+
+
+
+function getBookmarkletCode(projectKey, jql) {
+  // Use custom JQL if provided, otherwise default
+  const jqlQuery = jql && jql.trim() 
+    ? jql.trim().replace(/\n/g, ' ').replace(/"/g, '\\"')
+    : 'project = "' + (projectKey || 'BXDBE') + '" ORDER BY created DESC';
+  
+  return `javascript:(function(){
+  var PROJECT='${projectKey || 'BXDBE'}';
+  var DASHBOARD='http://localhost:5173';
+  var JQL="${jqlQuery}";
+  var u='/rest/api/latest/search?jql='+encodeURIComponent(JQL)+'&maxResults=500&fields=*all';
+  var x=new XMLHttpRequest();
+  x.open('GET',u,true);
+  x.setRequestHeader('Accept','application/json');
+  x.setRequestHeader('X-Atlassian-Token','no-check');
+  x.onload=function(){
+    if(x.status===200){
+      var d=JSON.parse(x.responseText);
+      var t=(d.issues||[]).map(function(i){
+        var f=i.fields||{};
+        var sf=f.customfield_10206||f.customfield_10020||f.customfield_10010||f.customfield_10007||f.customfield_10002||f.customfield_10021||f.customfield_10100||[];
+        console.log('[SPRINT DEBUG] Sprint raw:',sf);
+        var s=(Array.isArray(sf)?sf:[]).map(function(s){
+          if(typeof s==='string'){
+            var m=s.match(/name=([^,]+)/);
+            return m?m[1]:s;
+          }
+          return(s&&s.name)||'';
+        }).filter(Boolean);
+        return {
+          key:i.key,summary:f.summary||'',type:(f.issuetype||{}).name||'',
+          status:(f.status||{}).name||'',assignee:(f.assignee||{}).displayName||(f.assignee||{}).name||'',
+          comps:(f.components||[]).map(function(c){return c.name}).filter(Boolean),
+          sprints:s,primarySprint:s.length>0?s[s.length-1]:'',
+          timeSpentSec:f.timespent||0,timeSpentHr:(f.timespent||0)/3600,
+          estimateSec:f.timeestimate||0,estimateHr:(f.timeestimate||0)/3600,
+          created:f.created||null,resolved:f.resolutiondate||null,startDate:f.created||null
+        };
+      });
+      var p={tasks:t,project:PROJECT,jql:JQL,timestamp:new Date().toISOString(),count:t.length};
+      var e=btoa(unescape(encodeURIComponent(JSON.stringify(p))));
+      var w=window.open('','jira-dashboard');
+      if(w&&!w.closed){w.location.href=DASHBOARD+'#jira-data='+e;w.focus()}
+      else{window.open(DASHBOARD+'#jira-data='+e,'jira-dashboard')}
+    }else{alert('\u274c L\u1ed7i '+x.status+'. \u0110\xe3 \u0111\u0103ng nh\u1eadp JIRA ch\u01b0a?')}
+  };
+  x.onerror=function(){alert('\u274c Kh\xf4ng k\u1ebft n\u1ed1i \u0111\u01b0\u1ee3c. \u0110ang \u1edf trang JIRA ph\u1ea3i kh\xf4ng?')};
+  x.send();
+})();`;
+}
