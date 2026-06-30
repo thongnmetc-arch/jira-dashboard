@@ -56,7 +56,7 @@ export default function TaskDetail({ task, onClose }) {
     { label: FIELD_LABELS.comps, value: task.comps && task.comps.length > 0 ? task.comps.join(', ') : '—' },
     { label: FIELD_LABELS.primarySprint, value: task.primarySprint || '—' },
     { label: FIELD_LABELS.timeSpentHr, value: task.timeSpentHr != null ? task.timeSpentHr.toFixed(1) + 'h' : '—' },
-    { label: FIELD_LABELS.estimateHr, value: task.estimateHr != null ? task.estimateHr.toFixed(1) + 'h' : '—' },
+    { label: FIELD_LABELS.estimateHr, value: task.originalEstimateHr != null ? task.originalEstimateHr.toFixed(1) + 'h' : '—' },
     { label: FIELD_LABELS.created, value: formatDate(task.created) },
     { label: FIELD_LABELS.resolved, value: formatDate(task.resolved) },
   ];

@@ -18,8 +18,8 @@ export default function CompareView({ snapshotA, snapshotB }) {
     const countB = tasksB.length;
     const hoursA = tasksA.reduce((s, t) => s + (t.timeSpentHr || 0), 0);
     const hoursB = tasksB.reduce((s, t) => s + (t.timeSpentHr || 0), 0);
-    const estA = tasksA.reduce((s, t) => s + (t.estimateHr || 0), 0);
-    const estB = tasksB.reduce((s, t) => s + (t.estimateHr || 0), 0);
+    const estA = tasksA.reduce((s, t) => s + (t.originalEstimateHr || t.estimateHr || 0), 0);
+    const estB = tasksB.reduce((s, t) => s + (t.originalEstimateHr || t.estimateHr || 0), 0);
     const avgA = countA > 0 ? hoursA / countA : 0;
     const avgB = countB > 0 ? hoursB / countB : 0;
 

@@ -1,0 +1,34 @@
+# ============================================================
+# Kubernetes Deployment — JIRA Dashboard (React Vite SPA)
+# ============================================================
+# Image được pull từ registry nội bộ, xem dòng `image:` bên dưới
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jira-dashboard
+  labels:
+    app: jira-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jira-dashboard
+  template:
+    metadata:
+      labels:
+        app: jira-dashboard
+    spec:
+      containers:
+        - name: jira-dashboard
+          image: registry.etc.vn/backend3/jira-dashboard:202606301430
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

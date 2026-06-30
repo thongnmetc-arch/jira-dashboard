@@ -46,7 +46,7 @@ export default function OTPanel() {
             animate={{ x: 0 }}
             exit={{ x: 400 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed right-0 top-0 bottom-0 z-50 w-[380px] max-w-[90vw] bg-[var(--bg-primary)] border-l border-[var(--border-primary)] shadow-xl flex flex-col"
+            className="fixed right-0 top-0 bottom-0 z-50 w-[480px] max-w-[90vw] bg-[var(--bg-primary)] border-l border-[var(--border-primary)] shadow-xl flex flex-col"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-primary)]">

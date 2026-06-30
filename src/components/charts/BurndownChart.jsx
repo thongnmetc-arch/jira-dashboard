@@ -78,7 +78,7 @@ export default function BurndownChart({ tasks }) {
       return { sprints: sprintNames, chartData: null };
     }
 
-    const totalEstimate = sprintTasks.reduce((s, t) => s + (t.estimateHr || 0), 0);
+    const totalEstimate = sprintTasks.reduce((s, t) => s + (t.originalEstimateHr || t.estimateHr || 0), 0);
     const dayCount = days.length;
 
     // Compute ideal burndown: linear from totalEstimate to 0

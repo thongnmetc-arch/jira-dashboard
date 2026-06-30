@@ -1,0 +1,33 @@
+# ============================================================
+# Kubernetes Ingress — JIRA Dashboard
+# ============================================================
+# LƯU Ý: Thay 'jira-dashboard.example.com' bằng domain thực tế
+# được cấu hình trong DNS và Rancher (ví dụ: jira-dashboard.tencongty.local)
+# ============================================================
+# === Cách kiểm tra Ingress Controller & cert-manager trên Rancher ===
+# 1. Vào cluster → kubectl shell (góc trên phải) → chạy:
+#    kubectl get pods -A | grep -E "ingress|cert-manager"
+# 2. Hoặc vào Apps → Charts → tìm "nginx-ingress" / "cert-manager"
+# 3. Nếu chưa có ingress controller → Ingress sẽ không hoạt động!
+#    Cần cài nginx-ingress qua Apps → Charts → chọn "nginx-ingress"
+# 4. cert-manager hiện đang lỗi → dùng HTTP, không cần TLS
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jira-dashboard
+  annotations:
+    # Sử dụng rewrite-target '/' nếu Ingress Controller là nginx
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+    - host: jira-dashboard.example.com  # Thay bằng domain thực tế
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jira-dashboard
+                port:
+                  number: 80

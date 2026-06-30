@@ -134,13 +134,14 @@ export default function UploadZone() {
           throw new Error('Không tìm thấy dữ liệu công việc hợp lệ trong file.');
         }
 
-        const totalHr = tasks.reduce((s, t) => s + t.timeSpentHr, 0);
-        const totalEst = tasks.reduce((s, t) => s + t.estimateHr, 0);
+        const activeTasks = tasks.filter(t => { const s = t.status?.toLowerCase(); return s === 'resolved' || s === 'closed'; });
+        const totalHr = activeTasks.reduce((s, t) => s + t.timeSpentHr, 0);
+        const totalEst = activeTasks.reduce((s, t) => s + (t.originalEstimateHr || t.estimateHr || 0), 0);
 
         setFileName(file.name);
-        setFileStats(tasks.length + ' công việc · ' + totalHr.toFixed(1) + ' giờ đã log · ' + totalEst.toFixed(1) + ' giờ ước tính');
+        setFileStats(activeTasks.length + ' công việc · ' + totalHr.toFixed(1) + ' giờ đã log · ' + totalEst.toFixed(1) + ' giờ ước tính');
 
-        dispatch({ type: 'SET_FILE_INFO', payload: { fileName: file.name, fileStats: tasks.length + ' công việc · ' + totalHr.toFixed(1) + ' giờ đã log · ' + totalEst.toFixed(1) + ' giờ ước tính' } });
+        dispatch({ type: 'SET_FILE_INFO', payload: { fileName: file.name, fileStats: activeTasks.length + ' công việc · ' + totalHr.toFixed(1) + ' giờ đã log · ' + totalEst.toFixed(1) + ' giờ ước tính' } });
         dispatch({ type: 'SET_DATA_SOURCE', payload: 'csv' });
         dispatch({ type: 'SET_TASKS', payload: tasks });
         dispatch({ type: 'SET_OT_LEAVE', payload: { otTotal: 0, leaveTotal: 0 } });

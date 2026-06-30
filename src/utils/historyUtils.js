@@ -21,7 +21,7 @@ export const STORAGE_WARNING_THRESHOLD = 4500; // KB (4.5 MB)
 
 /**
  * Compress Task objects into compact tuple arrays for storage.
- * Each tuple: [key, timeSpentSec, estimateSec, compsStr, primarySprint, assignee, status, summary]
+ * Each tuple: [key, timeSpentSec, estimateSec, originalEstimateSec, compsStr, primarySprint, assignee, status, summary]
  * @param {Array<Object>} tasks
  * @returns {Array<Array>}
  */
@@ -31,6 +31,7 @@ export function compressTasks(tasks) {
     t.key || '',
     t.timeSpentSec || 0,
     t.estimateSec || 0,
+    t.originalEstimateSec || 0,
     Array.isArray(t.comps) ? t.comps.join('|') : String(t.comps || ''),
     t.primarySprint || '',
     t.assignee || '',
@@ -57,6 +58,7 @@ export function decompressTasks(tuples) {
       key = '',
       timeSpentSec = 0,
       estimateSec = 0,
+      originalEstimateSec = 0,
       compsStr = '',
       primarySprint = '',
       assignee = '',
@@ -75,6 +77,7 @@ export function decompressTasks(tuples) {
       timeSpentHr: timeSpentSec / 3600,
       estimateSec,
       estimateHr: estimateSec / 3600,
+      originalEstimateHr: originalEstimateSec / 3600,
       comps,
       primarySprint,
       assignee,
@@ -92,8 +95,7 @@ export function decompressTasks(tuples) {
       reporter: '',
       creator: '',
       sprints: primarySprint ? [primarySprint] : [],
-      originalEstimateSec: 0,
-      originalEstimateHr: 0,
+
       updated: null,
       dueDate: null,
       dueDateTime: null,

@@ -25,6 +25,65 @@ function buildAuth(email, token) {
 // Default JIRA URL for cookie-based login (Electron SSO)
 const JIRA_URL = 'https://20.84.97.109:3033';
 
+// ── Cookie-based login via session API (browser) ───────────────────────
+
+/**
+ * Login to JIRA Server using username + password via session API.
+ * JIRA Server (not Cloud) rejects Basic Auth — must use cookie session.
+ * @param {string} url - JIRA base URL (e.g. https://20.84.97.109:3033)
+ * @param {string} username - JIRA username
+ * @param {string} password - JIRA password
+ * @returns {Promise<{success: boolean, user?: string, error?: string}>}
+ */
+export async function loginWithPassword(url, username, password) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        username: username,
+        password: password,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (res.ok) {
+      const data = await res.json();
+      // After login, JSESSIONID cookie is automatically set by browser
+      // Test that we can now call API with the session cookie
+      const testRes = await fetch('/api/jira/rest/api/latest/myself');
+      if (testRes.ok) {
+        const user = await testRes.json();
+        return { success: true, user: user.displayName || user.name };
+      }
+      return { success: false, error: 'Đăng nhập thành công nhưng không thể gọi API. Vui lòng thử lại.' };
+    }
+
+    let errorBody = '';
+    try { const text = await res.text(); errorBody = text.substring(0, 1000); } catch(e) {}
+
+    if (res.status === 401) {
+      return { success: false, error: 'Sai tên đăng nhập hoặc mật khẩu.\n' + errorBody };
+    }
+    if (res.status === 403) {
+      return { success: false, error: 'CAPTCHA hoặc xác thực bị từ chối. Thử đăng nhập trực tiếp trên JIRA trước.\n' + errorBody };
+    }
+    return { success: false, error: `Lỗi ${res.status}: ${errorBody || res.statusText}` };
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err.name === 'AbortError') return { success: false, error: 'Kết nối quá thời gian (15s).' };
+    return { success: false, error: 'Không thể kết nối đến JIRA. Kiểm tra URL.' };
+  }
+}
+
 // ── Cookie-based (Electron SSO login) ──────────────────────────────────
 
 // Test connection using captured JIRA session cookies (no Basic Auth)
@@ -218,14 +277,7 @@ export async function testJiraConnection(url, email, token) {
     return electronTestConnection(url, email, token);
   }
 
-  const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-  let apiPath;
-  if (isDev) {
-    apiPath = '/api/jira/rest/api/latest/myself';
-  } else {
-    apiPath = `${buildBaseUrl(url)}/rest/api/latest/myself`;
-  }
+  let apiPath = '/api/jira/rest/api/latest/myself';
 
   const auth = buildAuth(email, token);
 
@@ -258,17 +310,17 @@ export async function testJiraConnection(url, email, token) {
     let errorBody = '';
     try {
       const text = await res.text();
-      errorBody = text.substring(0, 500);
+      errorBody = text.substring(0, 2000);
       console.error('[JIRA API] Error body:', errorBody);
     } catch (e) {
       // ignore read errors
     }
 
     if (res.status === 401) {
-      return { success: false, error: 'Xác thực thất bại. Token không hợp lệ hoặc hết hạn.' };
+      return { success: false, error: 'Xác thực thất bại (401). Token không hợp lệ hoặc hết hạn.\n' + errorBody };
     }
     if (res.status === 403) {
-      return { success: false, error: 'Tài khoản không có quyền truy cập API.' };
+      return { success: false, error: 'Từ chối truy cập (403).\n' + errorBody };
     }
     if (res.status === 404) {
       return { success: false, error: 'Không tìm thấy endpoint REST API. JIRA có thể không bật REST API.\nPhản hồi: ' + errorBody };
@@ -284,7 +336,7 @@ export async function testJiraConnection(url, email, token) {
       return { success: false, error: 'Kết nối quá thời gian (15s). Kiểm tra URL và kết nối mạng.' };
     }
     if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-      return { success: false, error: 'Không thể kết nối đến JIRA.\n- Nếu đang mở file HTML trực tiếp: chạy "npm run dev"\n- Kiểm tra JIRA có đang chạy không\n- Kiểm tra URL: ' + (isDev ? '(qua proxy)' : url) };
+      return { success: false, error: 'Không thể kết nối đến JIRA.\n- Kiểm tra JIRA có đang chạy không\n- Kiểm tra URL: https://20.84.97.109:3033' };
     }
     return { success: false, error: err.message };
   }
@@ -300,8 +352,6 @@ export async function fetchJiraIssues(url, email, token, projectKey, jql) {
   if (window.electronAPI?.isElectron) {
     return electronFetchIssues(url, email, token, projectKey, jql);
   }
-
-  const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
   // Use custom JQL if provided, otherwise try multiple formats for the projectKey
   const jqls = jql && jql.trim()
@@ -320,12 +370,7 @@ export async function fetchJiraIssues(url, email, token, projectKey, jql) {
   let lastError = null;
 
   for (const jql of jqls) {
-    let apiPath;
-    if (isDev) {
-      apiPath = `/api/jira/rest/api/latest/search?jql=${encodeURIComponent(jql)}&maxResults=500&fields=*all`;
-    } else {
-      apiPath = `${buildBaseUrl(url)}/rest/api/latest/search?jql=${encodeURIComponent(jql)}&maxResults=500&fields=*all`;
-    }
+    const apiPath = `/api/jira/rest/api/latest/search?jql=${encodeURIComponent(jql)}&maxResults=500&fields=*all`;
 
     console.log('[JIRA API] Fetching:', apiPath);
 

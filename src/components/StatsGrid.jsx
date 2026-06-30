@@ -35,11 +35,16 @@ const icons = [
 
 export default function StatsGrid({ tasks }) {
   const stats = useMemo(() => {
-    const totalHr = tasks.reduce((s, t) => s + t.timeSpentHr, 0);
-    const totalEst = tasks.reduce((s, t) => s + t.estimateHr, 0);
-    const avgHr = tasks.length > 0 ? totalHr / tasks.length : 0;
+    // Only count tasks with status Resolved or Closed (case-insensitive)
+    const activeTasks = tasks.filter(t => {
+      const s = t.status?.toLowerCase();
+      return s === 'resolved' || s === 'closed';
+    });
+    const totalHr = activeTasks.reduce((s, t) => s + t.timeSpentHr, 0);
+    const totalEst = activeTasks.reduce((s, t) => s + (t.originalEstimateHr || t.estimateHr || 0), 0);
+    const avgHr = activeTasks.length > 0 ? totalHr / activeTasks.length : 0;
     return [
-      { label: 'Tổng số công việc', value: tasks.length, decimals: 0, sub: 'tất cả các sprint' },
+      { label: 'Tổng số công việc', value: tasks.length, decimals: 0, sub: 'tất cả trạng thái' },
       { label: 'Tổng giờ đã log', value: totalHr, decimals: 1, sub: 'giờ (Time Spent)' },
       { label: 'Tổng giờ ước tính', value: totalEst, decimals: 1, sub: 'giờ (Original Estimate)' },
       { label: 'Thời gian TB mỗi task', value: avgHr, decimals: 1, sub: 'giờ / công việc' },

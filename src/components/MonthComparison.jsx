@@ -25,14 +25,15 @@ export default function MonthComparison({ tasks }) {
     const monthMap = {};
 
     tasks.forEach(t => {
+      if (!t.status || (t.status.toLowerCase() !== 'resolved' && t.status.toLowerCase() !== 'closed')) return;
       const d = t.resolved || t.created;
       if (!d) return;
       const key = formatMonthKey(d.getFullYear(), d.getMonth() + 1);
       if (!monthMap[key]) {
-        monthMap[key] = { taskCount: 0, totalHours: 0, count: 0 };
+        monthMap[key] = { taskCount: 0, totalEstHr: 0, count: 0 };
       }
       monthMap[key].taskCount += 1;
-      monthMap[key].totalHours += t.timeSpentHr || 0;
+      monthMap[key].totalEstHr += t.originalEstimateHr || t.estimateHr || 0;
       monthMap[key].count += 1;
     });
 
@@ -44,7 +45,7 @@ export default function MonthComparison({ tasks }) {
       const otHr = state.otLeaveData?.otTotal || 0;
       const leaveHr = state.otLeaveData?.leaveTotal || 0;
       const availableHr = wd * 7 + otHr - leaveHr;
-      const effort = val.totalHours > 0 ? (availableHr / val.totalHours) : 0;
+      const effort = val.totalEstHr > 0 ? (availableHr / val.totalEstHr) : 0;
 
       return {
         key,
@@ -52,7 +53,7 @@ export default function MonthComparison({ tasks }) {
         year: y,
         month: m,
         workingDays: wd,
-        totalHours: val.totalHours,
+        totalEstHr: val.totalEstHr,
         effort,
         taskCount: val.taskCount,
         ot: otHr,
@@ -64,8 +65,8 @@ export default function MonthComparison({ tasks }) {
   }, [tasks, state.otLeaveData]);
 
   // Find min/max for color coding
-  const maxHours = monthData.length > 0 ? Math.max(...monthData.map(d => d.totalHours)) : 0;
-  const minHours = monthData.length > 0 ? Math.min(...monthData.map(d => d.totalHours)) : 0;
+  const maxHours = monthData.length > 0 ? Math.max(...monthData.map(d => d.totalEstHr)) : 0;
+  const minHours = monthData.length > 0 ? Math.min(...monthData.map(d => d.totalEstHr)) : 0;
   const maxEffort = monthData.length > 0 ? Math.max(...monthData.map(d => d.effort)) : 0;
   const minEffort = monthData.length > 0 ? Math.min(...monthData.map(d => d.effort)) : 0;
 
@@ -74,15 +75,15 @@ export default function MonthComparison({ tasks }) {
     datasets: [
       {
         label: 'Tổng giờ',
-        data: monthData.map(d => Math.round(d.totalHours * 10) / 10),
+        data: monthData.map(d => Math.round(d.totalEstHr * 10) / 10),
         backgroundColor: monthData.map(d => {
-          if (d.totalHours >= maxHours) return 'rgba(34,197,94,0.75)';
-          if (d.totalHours <= minHours) return 'rgba(239,68,68,0.75)';
+          if (d.totalEstHr >= maxHours) return 'rgba(34,197,94,0.75)';
+          if (d.totalEstHr <= minHours) return 'rgba(239,68,68,0.75)';
           return 'rgba(99,102,241,0.65)';
         }),
         borderColor: monthData.map(d => {
-          if (d.totalHours >= maxHours) return '#22c55e';
-          if (d.totalHours <= minHours) return '#ef4444';
+          if (d.totalEstHr >= maxHours) return '#22c55e';
+          if (d.totalEstHr <= minHours) return '#ef4444';
           return '#6366f1';
         }),
         borderWidth: 1,
@@ -187,14 +188,14 @@ export default function MonthComparison({ tasks }) {
                 </td>
                 <td
                   className={`px-3 py-2.5 text-center font-mono font-semibold ${
-                    d.totalHours >= maxHours
+                    d.totalEstHr >= maxHours
                       ? 'text-[var(--success)]'
-                      : d.totalHours <= minHours
+                      : d.totalEstHr <= minHours
                       ? 'text-[var(--danger)]'
                       : 'text-[var(--text-primary)]'
                   }`}
                 >
-                  {d.totalHours.toFixed(1)}h
+                  {d.totalEstHr.toFixed(1)}h
                 </td>
                 <td
                   className={`px-3 py-2.5 text-center font-mono font-semibold ${

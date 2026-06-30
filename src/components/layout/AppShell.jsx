@@ -4,15 +4,17 @@ import { X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import BookmarkletPanel from '../BookmarkletPanel';
 
 export default function AppShell({ children }) {
   const { state, dispatch } = useApp();
 
-  // Close mobile sidebar on Escape
+  // Close mobile sidebar / bookmarklet panel on Escape
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
         dispatch({ type: 'SET_MOBILE_OPEN', payload: false });
+        dispatch({ type: 'SET_BOOKMARKLET_PANEL_OPEN', payload: false });
       }
     };
     window.addEventListener('keydown', handleEsc);
@@ -81,6 +83,9 @@ export default function AppShell({ children }) {
             {children}
           </div>
         </main>
+
+        {/* Bookmarklet Panel */}
+        {state.bookmarkletPanelOpen && <BookmarkletPanel />}
     </div>
   );
 }

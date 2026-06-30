@@ -102,7 +102,7 @@ export default function DataTable() {
     { key: 'primarySprint', label: 'Sprint' },
     { key: 'assignee', label: 'Người thực hiện' },
     { key: 'timeSpentHr', label: 'Giờ log' },
-    { key: 'estimateHr', label: 'Giờ ước tính' },
+    { key: 'originalEstimateHr', label: 'Giờ ước tính' },
     { key: 'status', label: 'Trạng thái' },
     { key: 'labels', label: 'Nhãn' },
   ];
@@ -302,7 +302,7 @@ export default function DataTable() {
                   {t.timeSpentHr.toFixed(1)}h
                 </td>
                 <td className="px-2.5 py-2 text-[13px] text-right tabular-nums whitespace-nowrap text-[var(--text-secondary)] font-mono">
-                  {t.estimateHr.toFixed(1)}h
+                  {t.originalEstimateHr.toFixed(1)}h
                 </td>
                 <td className="px-2.5 py-2 text-[13px] text-[var(--text-secondary)]">
                   {t.status || '—'}

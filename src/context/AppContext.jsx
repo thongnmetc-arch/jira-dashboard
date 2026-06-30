@@ -30,6 +30,8 @@ const initialState = {
   labelPanelOpen: false,
   // History Manager state
   historyPanelOpen: false,
+  // Bookmarklet Panel state
+  bookmarkletPanelOpen: false,
   // JIRA connection state
   jiraConfig: { url: '', email: '', token: '', projectKey: '', jql: '' },
   jiraConnected: false,
@@ -269,6 +271,8 @@ function reducer(state, action) {
     // === History Manager cases ===
     case 'SET_HISTORY_PANEL_OPEN':
       return { ...state, historyPanelOpen: action.payload };
+    case 'SET_BOOKMARKLET_PANEL_OPEN':
+      return { ...state, bookmarkletPanelOpen: action.payload };
     case 'RESTORE_SNAPSHOT': {
       const { tasks, name, fileName, otLeaveData, labelDefs, labelAssignments } = action.payload;
       return {

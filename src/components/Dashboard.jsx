@@ -71,10 +71,10 @@ export default function Dashboard() {
             setRefreshError('');
             const { url, email, token, projectKey, jql } = state.jiraConfig;
             if (!url || !email || !token || !projectKey) return;
-            const tasks = await fetchJiraIssues(url, email, token, projectKey, jql);
-            const totalHr = tasks.reduce((s, t) => s + t.timeSpentHr, 0);
-            const totalEst = tasks.reduce((s, t) => s + t.estimateHr, 0);
-            const stats = `${tasks.length} công việc · ${totalHr.toFixed(1)} giờ đã log · ${totalEst.toFixed(1)} giờ ước tính`;
+            const activeTasks = tasks.filter(t => { const s = t.status?.toLowerCase(); return s === 'resolved' || s === 'closed'; });
+            const totalHr = activeTasks.reduce((s, t) => s + t.timeSpentHr, 0);
+            const totalEst = activeTasks.reduce((s, t) => s + (t.originalEstimateHr || t.estimateHr || 0), 0);
+            const stats = `${activeTasks.length} công việc · ${totalHr.toFixed(1)} giờ đã log · ${totalEst.toFixed(1)} giờ ước tính`;
             dispatch({ type: 'SET_FILE_INFO', payload: { fileName: projectKey, fileStats: stats } });
             dispatch({ type: 'SET_TASKS', payload: tasks });
             dispatch({ type: 'SET_OT_LEAVE', payload: { otTotal: 0, leaveTotal: 0 } });
@@ -103,10 +103,10 @@ export default function Dashboard() {
     try {
       const { url, email, token, projectKey, jql } = state.jiraConfig;
       if (!url || !email || !token || !projectKey) return;
-      const tasks = await fetchJiraIssues(url, email, token, projectKey, jql);
-      const totalHr = tasks.reduce((s, t) => s + t.timeSpentHr, 0);
-      const totalEst = tasks.reduce((s, t) => s + t.estimateHr, 0);
-      const stats = `${tasks.length} công việc · ${totalHr.toFixed(1)} giờ đã log · ${totalEst.toFixed(1)} giờ ước tính`;
+      const activeTasks = tasks.filter(t => { const s = t.status?.toLowerCase(); return s === 'resolved' || s === 'closed'; });
+      const totalHr = activeTasks.reduce((s, t) => s + t.timeSpentHr, 0);
+      const totalEst = activeTasks.reduce((s, t) => s + (t.originalEstimateHr || t.estimateHr || 0), 0);
+      const stats = `${activeTasks.length} công việc · ${totalHr.toFixed(1)} giờ đã log · ${totalEst.toFixed(1)} giờ ước tính`;
       dispatch({ type: 'SET_FILE_INFO', payload: { fileName: projectKey, fileStats: stats } });
       dispatch({ type: 'SET_TASKS', payload: tasks });
       dispatch({ type: 'SET_OT_LEAVE', payload: { otTotal: 0, leaveTotal: 0 } });
@@ -241,7 +241,8 @@ export default function Dashboard() {
       {/* Overdue tasks warning */}
       {(() => {
         const overdueTasks = filteredTasks.filter(t => {
-          return t.status && t.status.toLowerCase() !== 'closed';
+          const s = t.status?.toLowerCase();
+          return s && s !== 'closed' && s !== 'resolved' && s !== 'cancelled';
         });
         return overdueTasks.length > 0 ? (
           <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center gap-3">

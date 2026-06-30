@@ -1,0 +1,20 @@
+# ============================================================
+# Kubernetes Service — JIRA Dashboard
+# ============================================================
+# Service loại ClusterIP để các thành phần trong cluster
+# (Ingress, các service khác) có thể truy cập dashboard
+# ============================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: jira-dashboard
+  labels:
+    app: jira-dashboard
+spec:
+  type: ClusterIP
+  selector:
+    app: jira-dashboard
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP

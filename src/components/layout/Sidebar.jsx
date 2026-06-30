@@ -12,6 +12,7 @@ import {
   Download,
   Tag,
   History,
+  Bookmark,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -194,6 +195,20 @@ export default function Sidebar() {
           <History className="w-4 h-4 flex-shrink-0" />
           {!sidebarCollapsed && (
             <span className="truncate">Lịch sử</span>
+          )}
+        </button>
+
+        {/* Bookmarklet */}
+        <button
+          onClick={() => dispatch({ type: 'SET_BOOKMARKLET_PANEL_OPEN', payload: true })}
+          className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
+            sidebarCollapsed ? 'justify-center px-0' : ''
+          } text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]`}
+          title={sidebarCollapsed ? 'Bookmarklet' : undefined}
+        >
+          <Bookmark className="w-4 h-4 flex-shrink-0" />
+          {!sidebarCollapsed && (
+            <span className="truncate">Bookmarklet</span>
           )}
         </button>
 
