@@ -1,68 +1,47 @@
-import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
-  Table,
-  Clock,
   ChevronLeft,
   ChevronRight,
-  Wifi,
+  ChevronDown,
   FileText,
-  BarChart3,
-  CalendarRange,
-  Download,
   Tag,
   History,
   Bookmark,
+  Calendar,
+  Clock,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
-const navItems = [
-  { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
-  { id: 'data', label: 'Dữ liệu', icon: Table },
-  { id: 'burndown', label: 'Burndown', icon: BarChart3 },
-  { id: 'month-compare', label: 'So sánh tháng', icon: CalendarRange },
-  { id: 'report', label: 'Báo cáo', icon: Download },
-  { id: 'ot', label: 'OT & Nghỉ phép', icon: Clock },
-];
+function SubItem({ icon: Icon, label, onClick }) {
+  return (
+    <motion.button
+      onClick={onClick}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]"
+    >
+      <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+      <span className="truncate">{label}</span>
+    </motion.button>
+  );
+}
 
 export default function Sidebar() {
   const { state, dispatch } = useApp();
-  const { sidebarCollapsed, activeSection } = state;
+  const { sidebarCollapsed, activeSection, showWeeklyPlanner } = state;
+  const [dashboardExpanded, setDashboardExpanded] = useState(true);
 
-  const handleNavClick = (section, action) => {
-    dispatch({ type: 'SET_ACTIVE_SECTION', payload: section });
-
-    switch (action) {
-      case 'scroll-top':
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        break;
-      case 'scroll-table':
-        document.getElementById('data-table-section')?.scrollIntoView({ behavior: 'smooth' });
-        break;
-      case 'open-ot':
-        dispatch({ type: 'SET_OT_PANEL_OPEN', payload: true });
-        break;
-      case 'scroll-burndown':
-        document.getElementById('burndown-section')?.scrollIntoView({ behavior: 'smooth' });
-        break;
-      case 'scroll-month-compare':
-        document.getElementById('month-comparison-section')?.scrollIntoView({ behavior: 'smooth' });
-        break;
-      case 'scroll-report':
-        document.getElementById('auto-report-section')?.scrollIntoView({ behavior: 'smooth' });
-        break;
-      default:
-        break;
-    }
-  };
-
-  const handleResetToConnect = () => {
-    dispatch({ type: 'RESET' });
-  };
+  const isDashboardActive = !showWeeklyPlanner && activeSection === 'dashboard';
 
   const toggleCollapse = () => {
     dispatch({ type: 'SET_SIDEBAR_COLLAPSED', payload: !sidebarCollapsed });
   };
+
+  const openOT = () => dispatch({ type: 'SET_OT_PANEL_OPEN', payload: true });
+  const openLabels = () => dispatch({ type: 'SET_LABEL_PANEL_OPEN', payload: true });
+  const openHistory = () => dispatch({ type: 'SET_HISTORY_PANEL_OPEN', payload: true });
 
   return (
     <aside
@@ -96,46 +75,77 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeSection === item.id;
-          return (
-            <motion.button
-              key={item.id}
-              onClick={() => {
-                const actionMap = {
-                  dashboard: 'scroll-top',
-                  data: 'scroll-table',
-                  burndown: 'scroll-burndown',
-                  'month-compare': 'scroll-month-compare',
-                  report: 'scroll-report',
-                  ot: 'open-ot',
-                };
-                handleNavClick(item.id, actionMap[item.id] || null);
-              }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
-                isActive
-                  ? 'bg-[var(--accent-light)] text-[var(--accent)]'
-                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]'
-              } ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
-              title={sidebarCollapsed ? item.label : undefined}
+        {/* Dashboard parent */}
+        <motion.button
+          onClick={() => {
+            dispatch({ type: 'SET_ACTIVE_SECTION', payload: 'dashboard' });
+            dispatch({ type: 'SET_DASHBOARD_TAB', payload: 'overview' });
+            dispatch({ type: 'SET_SHOW_WEEKLY_PLANNER', payload: false });
+            setDashboardExpanded(!dashboardExpanded);
+          }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
+            isDashboardActive
+              ? 'bg-[var(--accent-light)] text-[var(--accent)]'
+              : 'text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]'
+          } ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
+          title={sidebarCollapsed ? 'Dashboard' : undefined}
+        >
+          <LayoutDashboard className={`w-4 h-4 flex-shrink-0 ${isDashboardActive ? 'text-[var(--accent)]' : ''}`} />
+          {!sidebarCollapsed && (
+            <span className="truncate">Dashboard</span>
+          )}
+          {!sidebarCollapsed && (
+            <ChevronDown className={`w-3.5 h-3.5 ml-auto transition-transform ${dashboardExpanded ? 'rotate-180' : ''}`} />
+          )}
+          {isDashboardActive && !sidebarCollapsed && (
+            <motion.div
+              layoutId="activeIndicator"
+              className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--accent)]"
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            />
+          )}
+        </motion.button>
+
+        {/* Sub-items: OT, Labels, History */}
+        <AnimatePresence>
+          {dashboardExpanded && isDashboardActive && !sidebarCollapsed && (
+            <motion.div
+              key="dashboard-subitems"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
+              className="overflow-hidden ml-4 space-y-0.5"
             >
-              <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-[var(--accent)]' : ''}`} />
-              {!sidebarCollapsed && (
-                <span className="truncate">{item.label}</span>
-              )}
-              {isActive && !sidebarCollapsed && (
-                <motion.div
-                  layoutId="activeIndicator"
-                  className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--accent)]"
-                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                />
-              )}
-            </motion.button>
-          );
-        })}
+              <SubItem icon={Clock} label="OT & Nghỉ phép" onClick={openOT} />
+              <SubItem icon={Tag} label="Quản lý nhãn" onClick={openLabels} />
+              <SubItem icon={History} label="Lịch sử" onClick={openHistory} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Lên lịch tuần */}
+        <motion.button
+          onClick={() => {
+            dispatch({ type: 'SET_ACTIVE_SECTION', payload: 'weekly-planner' });
+            dispatch({ type: 'SET_SHOW_WEEKLY_PLANNER', payload: true });
+          }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
+            activeSection === 'weekly-planner' && showWeeklyPlanner
+              ? 'bg-[var(--accent-light)] text-[var(--accent)]'
+              : 'text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]'
+          } ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
+          title={sidebarCollapsed ? 'Lên lịch tuần' : undefined}
+        >
+          <Calendar className={`w-4 h-4 flex-shrink-0 ${activeSection === 'weekly-planner' && showWeeklyPlanner ? 'text-[var(--accent)]' : ''}`} />
+          {!sidebarCollapsed && (
+            <span className="truncate">Lên lịch tuần</span>
+          )}
+        </motion.button>
 
         {/* Import HTML */}
         <button
@@ -170,34 +180,6 @@ export default function Sidebar() {
           )}
         </button>
 
-        {/* Quản lý nhãn */}
-        <button
-          onClick={() => dispatch({ type: 'SET_LABEL_PANEL_OPEN', payload: true })}
-          className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
-            sidebarCollapsed ? 'justify-center px-0' : ''
-          } text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]`}
-          title={sidebarCollapsed ? 'Quản lý nhãn' : undefined}
-        >
-          <Tag className="w-4 h-4 flex-shrink-0" />
-          {!sidebarCollapsed && (
-            <span className="truncate">Quản lý nhãn</span>
-          )}
-        </button>
-
-        {/* Lịch sử */}
-        <button
-          onClick={() => dispatch({ type: 'SET_HISTORY_PANEL_OPEN', payload: true })}
-          className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
-            sidebarCollapsed ? 'justify-center px-0' : ''
-          } text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]`}
-          title={sidebarCollapsed ? 'Lịch sử' : undefined}
-        >
-          <History className="w-4 h-4 flex-shrink-0" />
-          {!sidebarCollapsed && (
-            <span className="truncate">Lịch sử</span>
-          )}
-        </button>
-
         {/* Bookmarklet */}
         <button
           onClick={() => dispatch({ type: 'SET_BOOKMARKLET_PANEL_OPEN', payload: true })}
@@ -211,27 +193,6 @@ export default function Sidebar() {
             <span className="truncate">Bookmarklet</span>
           )}
         </button>
-
-        {/* Divider */}
-        {!sidebarCollapsed && (
-          <div className="my-2 border-t border-[var(--border-primary)]" />
-        )}
-
-        {/* Kết nối JIRA */}
-        <motion.button
-          onClick={handleResetToConnect}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
-            sidebarCollapsed ? 'justify-center px-0' : ''
-          } text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]`}
-          title={sidebarCollapsed ? 'Kết nối JIRA' : undefined}
-        >
-          <Wifi className="w-4 h-4 flex-shrink-0" />
-          {!sidebarCollapsed && (
-            <span className="truncate">Kết nối JIRA</span>
-          )}
-        </motion.button>
       </nav>
 
       {/* Collapse button */}

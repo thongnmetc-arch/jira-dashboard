@@ -211,7 +211,135 @@ async function electronFetchIssues(url, token, projectKey, assignee, jql) {
   throw lastError || new Error('Không thể lấy dữ liệu từ JIRA.');
 }
 
+// ── Fetch Projects (Electron helpers) ──────────────────────────────────
+
+// Electron cookie-based: fetch project list
+async function electronCookieFetchProjects() {
+  const apiUrl = `${JIRA_URL}/rest/api/latest/project`;
+
+  try {
+    const response = await window.electronAPI.jiraFetch(apiUrl, {
+      headers: {
+        'Accept': 'application/json',
+        'X-Atlassian-Token': 'no-check',
+      }
+    });
+
+    if (response.status === 200) {
+      const projects = JSON.parse(response.body);
+      return projects.map(p => ({
+        key: p.key,
+        name: p.name,
+        description: p.description || p.name,
+        lead: p.lead?.displayName || p.lead?.name || '',
+        issueCount: p.issueCount || 0,
+      }));
+    }
+
+    let errorBody = '';
+    try { errorBody = JSON.parse(response.body); } catch(e) { errorBody = response.body || ''; }
+    throw new Error(`Lỗi ${response.status}: ${typeof errorBody === 'string' ? errorBody.substring(0, 300) : JSON.stringify(errorBody).substring(0, 300)}`);
+  } catch (err) {
+    if (err.message?.startsWith('Lỗi')) throw err;
+    throw new Error(err.message || 'Không thể lấy danh sách dự án qua Electron (cookie).');
+  }
+}
+
+// Electron API-token: fetch project list via IPC
+async function electronFetchProjects(url, token) {
+  const baseUrl = buildBaseUrl(url);
+  const apiUrl = `${baseUrl}/rest/api/latest/project`;
+  const auth = buildAuth(token);
+
+  try {
+    const response = await window.electronAPI.jiraFetch(apiUrl, {
+      headers: {
+        'Authorization': auth,
+        'Accept': 'application/json',
+        'X-Atlassian-Token': 'no-check',
+      }
+    });
+
+    if (response.status === 200) {
+      const projects = JSON.parse(response.body);
+      return projects.map(p => ({
+        key: p.key,
+        name: p.name,
+        description: p.description || p.name,
+        lead: p.lead?.displayName || p.lead?.name || '',
+        issueCount: p.issueCount || 0,
+      }));
+    }
+
+    let errorBody = '';
+    try { errorBody = JSON.parse(response.body); } catch(e) { errorBody = response.body || ''; }
+    throw new Error(`Lỗi ${response.status}: ${typeof errorBody === 'string' ? errorBody.substring(0, 300) : JSON.stringify(errorBody).substring(0, 300)}`);
+  } catch (err) {
+    if (err.message?.startsWith('Lỗi')) throw err;
+    throw new Error(err.message || 'Không thể lấy danh sách dự án qua Electron.');
+  }
+}
+
 // ── Public API ─────────────────────────────────────────────────────────
+
+// Step 0: Fetch available projects (used by ProjectSelector wizard step)
+export async function fetchProjects(url, email, token) {
+  // Electron with cookie-based login
+  if (window.electronAPI?.isElectron && !token) {
+    return electronCookieFetchProjects();
+  }
+  // Electron desktop app — no CORS, call JIRA directly via IPC
+  if (window.electronAPI?.isElectron) {
+    return electronFetchProjects(url, token);
+  }
+
+  // Browser — use Vite proxy (ignores url)
+  const auth = buildAuth(token);
+  const apiPath = `/api/jira/rest/api/latest/project`;
+
+  console.log('[JIRA API] Fetching projects');
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(apiPath, {
+      method: 'GET',
+      headers: {
+        'Authorization': auth,
+        'Accept': 'application/json',
+        'X-Atlassian-Token': 'no-check',
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      let errorBody = '';
+      try { errorBody = await res.text(); } catch(e) {}
+      throw new Error(`Lỗi ${res.status}: ${errorBody.substring(0, 300)}`);
+    }
+
+    const projects = await res.json();
+    return projects.map(p => ({
+      key: p.key,
+      name: p.name,
+      description: p.description || p.name,
+      lead: p.lead?.displayName || p.lead?.name || '',
+      issueCount: p.issueCount || 0,
+    }));
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err.name === 'AbortError') {
+      throw new Error('Kết nối quá thời gian khi lấy danh sách dự án.');
+    }
+    console.error('[JIRA API] fetchProjects error:', err);
+    throw err;
+  }
+}
+
+// Step 1: Test connection and auth before fetching issues
 
 // Step 1: Test connection and auth before fetching issues
 export async function testJiraConnection(url, token) {

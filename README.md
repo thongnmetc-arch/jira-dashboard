@@ -8,6 +8,7 @@
     <img src="https://img.shields.io/badge/Chart.js-4-FF6384?logo=chartdotjs&logoColor=white" alt="Chart.js 4"/>
     <img src="https://img.shields.io/badge/Electron-42-47848F?logo=electron&logoColor=white" alt="Electron 42"/>
     <img src="https://img.shields.io/badge/License-MIT-yellow" alt="MIT License"/>
+    <img src="https://img.shields.io/badge/Version-v1.2.0-blue" alt="v1.2.0"/>
   </p>
   <p><em>Ứng dụng web đơn trang (SPA) giúp trực quan hóa dữ liệu thời gian làm việc từ JIRA</em></p>
 </div>
@@ -18,7 +19,7 @@
 
 **JIRA Time Tracking Dashboard** là ứng dụng web đơn trang (Single Page Application) được xây dựng với React 19, cho phép nhập và phân tích dữ liệu thời gian làm việc từ JIRA qua nhiều kênh khác nhau. 
 
-Ứng dụng hiện hỗ trợ nhập dữ liệu từ **HTML export** từ Excel, **JIRA API** (Basic Auth), và **Bookmarklet** — giúp bạn linh hoạt lựa chọn phương thức phù hợp nhất với quy trình hiện tại. (Hỗ trợ import file **CSV** sẽ được bổ sung trong phiên bản sau.)
+Ứng dụng hiện hỗ trợ nhập dữ liệu từ **HTML export** từ Excel, **JIRA API** (Basic Auth), và **Bookmarklet** — giúp bạn linh hoạt lựa chọn phương thức phù hợp nhất với quy trình hiện tại.
 
 Sau khi nhập dữ liệu, dashboard cung cấp:
 - **Phân tích effort** với biểu đồ trực quan (Chart.js)
@@ -27,10 +28,24 @@ Sau khi nhập dữ liệu, dashboard cung cấp:
 - **Lưu snapshot lịch sử**, so sánh delta giữa 2 phiên bản
 - **Xuất báo cáo** dạng CSV hoặc JSON
 - Giao diện **Dark/Light theme** với hiệu ứng chuyển cảnh Framer Motion
+- **Weekly Planner**: lên lịch công việc theo tuần, log worklog
 
 ---
 
 ## ✨ Tính năng chính
+
+### 🔐 Màn hình đăng nhập bảo vệ app
+- Bảo vệ toàn bộ ứng dụng bằng màn hình đăng nhập
+- Mã hóa mật khẩu bằng **SHA-256**
+- Khóa tài khoản sau **5 lần nhập sai** (tự động mở khóa sau 30 phút)
+- **Dark/Light mode** ngay trên màn hình đăng nhập (2 cột)
+- Mật khẩu mặc định: `123456aA@`
+
+### 🧭 Flow Wizard
+- Luồng thiết lập có hướng dẫn từng bước:
+  1. **Đăng nhập** → 2. **Kết nối JIRA** → 3. **Chọn Project** (grid card) → 4. **Cấu hình Query** → 5. **Dashboard**
+- Project selector dạng grid card với tìm kiếm
+- Nút đổi dự án từ Dashboard (quay lại bước chọn Project)
 
 ### 📥 Import dữ liệu
 
@@ -40,15 +55,22 @@ Sau khi nhập dữ liệu, dashboard cung cấp:
 | **JIRA API** | Nhập URL, Email, API Token, Project Key → tự động fetch dữ liệu |
 | **Bookmarklet** | Tạo bookmark → click trên tab JIRA → tự động thu thập và gửi dữ liệu |
 
-### 📊 Dashboard & Biểu đồ
+### 📊 Dashboard phân tab
 
-- **5 biểu đồ Chart.js**:
-  - `TypeDoughnutChart` — Phân bố loại công việc (Bug, Task, Story...)
-  - `SprintBarChart` — So sánh effort theo Sprint
-  - `AssigneeBarChart` — Effort theo từng thành viên
-  - `ComponentBarChart` — Effort theo component
-  - `DailyTrendChart` — Xu hướng thời gian theo ngày
-  - `BurndownChart` — Biểu đồ burndown tiến độ
+| Tab | Mô tả |
+|-----|-------|
+| **Tổng quan** | Biểu đồ, thống kê, FilterBar |
+| **Dữ liệu** | DataTable chi tiết từng task |
+| **Gantt** | Biểu đồ Gantt timeline |
+| **So sánh** | So sánh dữ liệu theo tháng / snapshot |
+
+### Biểu đồ Chart.js
+- `TypeDoughnutChart` — Phân bố loại công việc (Bug, Task, Story...)
+- `SprintBarChart` — So sánh effort theo Sprint
+- `AssigneeBarChart` — Effort theo từng thành viên
+- `ComponentBarChart` — Effort theo component
+- `DailyTrendChart` — Xu hướng thời gian theo ngày
+- `BurndownChart` — Biểu đồ burndown tiến độ
 - **Gantt Chart** trực quan theo timeline
 - **DataTable** với phân trang, sắp xếp, tìm kiếm
 - **Stats Grid** — Thống kê tổng quan (tổng giờ, số task, trung bình...)
@@ -79,12 +101,22 @@ Sau khi nhập dữ liệu, dashboard cung cấp:
 - **So sánh delta** giữa 2 bản (so sánh khác biệt về effort, số lượng task...)
 - Lưu trữ trong `localStorage` và có thể xuất ra file
 
+### 📅 Weekly Planner
+
+- Lên lịch công việc theo tuần (thứ 2 → thứ 6)
+- Tự động load tasks từ JIRA
+- Kéo-thả / chọn task vào từng ngày
+- **Log worklog** trực tiếp lên JIRA
+- Lưu kế hoạch vào `localStorage`
+- Theo dõi tiến độ theo giờ (mục tiêu 35h/tuần)
+
 ### 🌓 Giao diện
 
-- **Dark/Light theme** với CSS variables
+- **Dark/Light theme** với CSS variables, chuyển đổi ngay từ màn hình đăng nhập
 - **Framer Motion** animation cho chuyển cảnh mượt mà
-- **Sidebar** thu gọn/mở rộng
+- **Sidebar** thu gọn/mở rộng, phân cấp menu Dashboard (cha-con)
 - **Responsive** — hỗ trợ mobile và desktop
+- Font **Consolas** toàn bộ ứng dụng
 
 ### 🖥 Electron Desktop App
 
@@ -98,6 +130,22 @@ Sau khi nhập dữ liệu, dashboard cung cấp:
 
 - Xuất dữ liệu hiện tại ra file **CSV**
 - Xuất ra file **JSON** (bao gồm cả nhãn và OT)
+
+---
+
+## 🆕 Tính năng mới trong v1.2.0
+
+| Tính năng | Mô tả |
+|-----------|-------|
+| 🔐 Màn hình đăng nhập | Bảo vệ app bằng SHA-256, khóa sau 5 lần sai |
+| 🧭 Flow Wizard | Login → Connect JIRA → Select Project → Config → Dashboard |
+| 📅 Weekly Planner | Lên lịch tuần, auto-load JIRA tasks, log worklog |
+| 🗂️ Dashboard phân tab | Tổng quan / Dữ liệu / Gantt / So sánh |
+| 🌓 Dark/Light mode | Trên màn hình đăng nhập (thiết kế 2 cột) |
+| 🃏 Project selector | Dạng grid card, tìm kiếm, hiện đại |
+| 🔄 Đổi dự án | Nút từ Dashboard, quay lại bước chọn Project |
+| ✏️ Font Consolas | Đổi toàn bộ font sang Consolas |
+| 📐 Sidebar phân cấp | Dashboard menu cha-con |
 
 ---
 
@@ -141,6 +189,8 @@ npm run dev
 ```
 
 Truy cập [http://localhost:5173](http://localhost:5173) — dev server với HMR (Hot Module Replacement).
+
+Mật khẩu đăng nhập mặc định: `123456aA@`
 
 ### Build production
 
@@ -219,7 +269,22 @@ npm run electron:build
 
 ## 📋 Cách sử dụng
 
-### 1. Nhập dữ liệu
+### 1. Đăng nhập
+Khi mở ứng dụng, bạn sẽ thấy màn hình đăng nhập 2 cột:
+- Bên trái: form đăng nhập (tên đăng nhập, mật khẩu)
+- Bên phải: giới thiệu tính năng
+- Mật khẩu mặc định: `123456aA@`
+- Có nút chuyển **Dark/Light mode**
+
+### 2. Flow Wizard thiết lập
+
+Sau khi đăng nhập, wizard hướng dẫn từng bước:
+1. **Kết nối JIRA** — nhập URL, Email, API Token
+2. **Chọn Project** — grid card với tìm kiếm
+3. **Cấu hình** — JQL, Assignee filter
+4. **Dashboard** — tự động load dữ liệu
+
+### 3. Nhập dữ liệu
 
 #### HTML (Excel export)
 1. Trong JIRA, vào tab **Issues** → **Export** → **Excel (HTML)**
@@ -240,25 +305,31 @@ npm run electron:build
 2. Dán đoạn script bookmarklet (xem trong sidebar → Bookmarklet)
 3. Mở tab JIRA, click bookmark → tự động thu thập và gửi dữ liệu
 
-> ⚠️ **Sắp tới:** Hỗ trợ import file CSV sẽ được bổ sung trong phiên bản sau.
+### 4. Khám phá Dashboard
 
-### 2. Khám phá Dashboard
+Sau khi có dữ liệu, dashboard phân 4 tab:
+- **Tổng quan**: StatsGrid + ChartGrid + FilterBar
+- **Dữ liệu**: DataTable chi tiết (sort, search, page)
+- **Gantt**: Biểu đồ Gantt timeline
+- **So sánh**: MonthComparison + CompareView
 
-Sau khi nhập dữ liệu:
-- **Biểu đồ** hiển thị tổng quan effort theo nhiều chiều
-- **Gantt Chart** cho timeline công việc
-- **DataTable** để xem chi tiết từng task (có thể sắp xếp, tìm kiếm)
-- **Filter Bar** để lọc theo Sprint, Component, Assignee, ngày, nhãn
-- **Effort Card** hiển thị gauge bar và ratio effort
+### 5. Weekly Planner
 
-### 3. Quản lý OT & Nghỉ phép
+- Mở từ sidebar → **Weekly Planner**
+- Chọn tuần bằng nút điều hướng (← →)
+- Tasks từ JIRA hiện ở cột bên trái
+- Kéo thả hoặc click + để thêm task vào từng ngày
+- Nhập số giờ làm việc
+- Nhấn **Log Worklog** để ghi lên JIRA
+
+### 6. Quản lý OT & Nghỉ phép
 
 - Click vào **OT Panel** trong sidebar
 - Thêm giờ OT với nút **+ OT**
 - Thêm ngày nghỉ với nút **+ Nghỉ phép**
 - Tổng OT và nghỉ phép hiển thị trên dashboard
 
-### 4. Gán nhãn
+### 7. Gán nhãn
 
 - Mở **Label Manager** từ sidebar
 - **Tạo nhãn mới** với tên và màu sắc
@@ -266,7 +337,7 @@ Sau khi nhập dữ liệu:
 - **Gán hàng loạt**: chọn nhiều task → gán nhãn cùng lúc
 - **Auto-rule**: thêm quy tắc tự động (vd: "Component = Backend → gán nhãn Backend")
 
-### 5. Lưu & So sánh lịch sử
+### 8. Lưu & So sánh lịch sử
 
 - Mở **History** từ sidebar
 - **Lưu snapshot**: đặt tên → lưu trạng thái hiện tại
@@ -286,13 +357,13 @@ jira-dashboard/
 │
 ├── src/
 │   ├── main.jsx         # Entry point React
-│   ├── App.jsx          # Root component + data import handlers
+│   ├── App.jsx          # Root component + wizard flow + login gate
 │   ├── index.css        # Tailwind CSS + CSS variables (themes)
 │   │
 │   ├── components/
 │   │   ├── layout/
 │   │   │   ├── AppShell.jsx     # Khung ứng dụng chính
-│   │   │   ├── Sidebar.jsx      # Sidebar điều hướng
+│   │   │   ├── Sidebar.jsx      # Sidebar điều hướng (dashboard cha-con)
 │   │   │   └── TopBar.jsx       # Thanh công cụ trên cùng
 │   │   │
 │   │   ├── charts/
@@ -303,16 +374,21 @@ jira-dashboard/
 │   │   │   ├── SprintBarChart.jsx
 │   │   │   └── TypeDoughnutChart.jsx
 │   │   │
+│   │   ├── LoginScreen.jsx      # Màn hình đăng nhập (SHA-256, dark/light)
+│   │   ├── Dashboard.jsx        # Trang dashboard chính (phân tab)
+│   │   ├── DashboardTabs.jsx    # Tab navigator (Tổng quan/Dữ liệu/Gantt/So sánh)
+│   │   ├── WeeklyPlanner.jsx    # Lên lịch tuần + log worklog
+│   │   ├── ProjectSelector.jsx  # Chọn project dạng grid card
+│   │   ├── QueryConfig.jsx      # Cấu hình query JIRA
 │   │   ├── ChartGrid.jsx        # Grid hiển thị các biểu đồ
-│   │   ├── Dashboard.jsx        # Trang dashboard chính
 │   │   ├── DataTable.jsx        # Bảng dữ liệu (sort, search, page)
 │   │   ├── EffortCard.jsx       # Thẻ effort (gauge, ratio)
-│   │   ├── FilterBar.jsx        # Thanh lọc dữ liệu
+│   │   ├── FilterBar.jsx        # Thanh lọc dữ liệu (gọn 1 hàng)
 │   │   ├── GanttChart.jsx       # Biểu đồ Gantt
 │   │   ├── StatsGrid.jsx        # Thống kê tổng quan
 │   │   ├── TaskDetail.jsx       # Chi tiết task
 │   │   │
-│   │   ├── UploadZone.jsx       # Kéo thả file CSV
+│   │   ├── UploadZone.jsx       # Kéo thả file HTML
 │   │   ├── JiraConnect.jsx      # Kết nối JIRA API
 │   │   ├── OTPanel.jsx          # Quản lý OT/Nghỉ phép
 │   │   │
@@ -331,6 +407,8 @@ jira-dashboard/
 │   │   └── AppContext.jsx       # State toàn cục (Context API + useReducer)
 │   │
 │   └── utils/
+│       ├── authUtils.js         # Xác thực SHA-256, lockout
+│       ├── jiraWorklog.js       # Log worklog lên JIRA
 │       ├── csvParser.js         # Parse file CSV
 │       ├── htmlParser.js        # Parse HTML export từ JIRA
 │       ├── jiraApi.js           # Gọi JIRA REST API
@@ -400,15 +478,28 @@ graph TD
     G <--> S
 ```
 
+### Flow Wizard
+
+```mermaid
+graph LR
+    L[Login] --> C[Connect JIRA]
+    C --> P[Select Project]
+    P --> Q[Query Config]
+    Q --> D[Dashboard]
+    D -->|Change Project| P
+```
+
 ### Luồng dữ liệu
 
-1. **Import**: User nhập dữ liệu qua HTML / API / Bookmarklet
-2. **Parse**: File được parse bởi các utility (`csvParser`, `htmlParser`, `jiraApi`)
-3. **Dispatch**: Dữ liệu được gửi vào `AppContext` qua action `SET_TASKS`
-4. **Label sync**: Label auto-rule chạy, gán nhãn tự động
-5. **Render**: Dashboard re-render với dữ liệu mới
-6. **Filter/Sort**: User lọc, sắp xếp, tìm kiếm — state cập nhật → re-render
-7. **Export/Lưu**: User xuất CSV/JSON hoặc lưu snapshot lịch sử
+1. **Login** → xác thực SHA-256, kiểm tra lockout
+2. **Wizard** → Connect → Select Project → Query Config
+3. **Import**: User nhập dữ liệu qua HTML / API / Bookmarklet
+4. **Parse**: File được parse bởi các utility (`htmlParser`, `jiraApi`)
+5. **Dispatch**: Dữ liệu được gửi vào `AppContext` qua action `SET_TASKS`
+6. **Label sync**: Label auto-rule chạy, gán nhãn tự động
+7. **Render**: Dashboard re-render với dữ liệu mới
+8. **Filter/Sort**: User lọc, sắp xếp, tìm kiếm — state cập nhật → re-render
+9. **Export/Lưu**: User xuất CSV/JSON hoặc lưu snapshot lịch sử
 
 ### Electron Architecture
 
@@ -431,6 +522,12 @@ Trong môi trường Electron, renderer giao tiếp với main process qua IPC b
 ## 📄 Giấy phép
 
 Dự án được phân phối dưới giấy phép **MIT**. Xem file [LICENSE](LICENSE) để biết thêm chi tiết.
+
+---
+
+## 📋 Lịch sử phiên bản
+
+Xem [CHANGELOG.md](CHANGELOG.md) để biết chi tiết các phiên bản.
 
 ---
 

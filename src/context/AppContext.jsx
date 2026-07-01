@@ -43,6 +43,12 @@ const initialState = {
   isElectron: !!window.electronAPI?.isElectron,
   // Bulk selection state
   selectedTasks: [],
+  // Wizard / selected project
+  selectedProject: '',
+  // Dashboard tab navigation
+  dashboardTab: 'overview',
+  // Weekly Planner visibility
+  showWeeklyPlanner: false,
 };
 
 function reducer(state, action) {
@@ -114,6 +120,8 @@ function reducer(state, action) {
       return { ...state, jiraConfig: action.payload };
     case 'SET_JIRA_CONNECTED':
       return { ...state, jiraConnected: action.payload };
+    case 'SET_SELECTED_PROJECT':
+      return { ...state, selectedProject: action.payload };
     case 'SET_LOADED':
       return { ...state, isLoaded: action.payload };
     case 'SET_DATA_SOURCE':
@@ -292,12 +300,16 @@ function reducer(state, action) {
         historyPanelOpen: false,
       };
     }
+    case 'SET_DASHBOARD_TAB':
+      return { ...state, dashboardTab: action.payload };
+    case 'SET_SHOW_WEEKLY_PLANNER':
+      return { ...state, showWeeklyPlanner: action.payload };
     default:
       return state;
   }
 }
 
-export function AppProvider({ children }) {
+export function AppProvider({ children, onChangeProject }) {
   const [state, dispatch] = useReducer(reducer, initialState, (init) => {
     // Load persisted state
     let darkMode = false;
@@ -402,7 +414,7 @@ export function AppProvider({ children }) {
   }, [state.allTasks, state.filters]);
 
   return (
-    <AppContext.Provider value={{ state, dispatch, getFilteredTasks }}>
+    <AppContext.Provider value={{ state, dispatch, getFilteredTasks, onChangeProject }}>
       {children}
     </AppContext.Provider>
   );

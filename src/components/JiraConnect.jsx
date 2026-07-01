@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Wifi, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, Info, LogIn, LogOut } from 'lucide-react';
+import { Wifi, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, Info, LogIn, LogOut, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { testJiraConnection, fetchJiraIssues } from '../utils/jiraApi';
 
-export default function JiraConnect() {
+export default function JiraConnect({ mode, onConnected, onBack }) {
   const { state, dispatch } = useApp();
+  const isWizard = mode === 'wizard';
+  const [connectSuccess, setConnectSuccess] = useState(false);
 
   const [form, setForm] = useState({ url: '', token: '', projectKey: '', assignee: '', jql: '' });
   const [showToken, setShowToken] = useState(false);
@@ -82,11 +84,12 @@ export default function JiraConnect() {
   }, [jiraError]);
 
   const handleConnect = useCallback(async () => {
-    // Validate
-    const { url, token, projectKey } = form;
+    const { url, token } = form;
+
+    // Validate — wizard mode doesn't require projectKey
     if (!url.trim()) { setJiraError('Vui lòng nhập URL JIRA.'); return; }
     if (!token.trim()) { setJiraError('Vui lòng nhập API Token.'); return; }
-    if (!projectKey.trim()) { setJiraError('Vui lòng nhập Project Key.'); return; }
+    if (!isWizard && !form.projectKey.trim()) { setJiraError('Vui lòng nhập Project Key.'); return; }
 
     // Basic URL validation
     try {
@@ -102,8 +105,9 @@ export default function JiraConnect() {
 
     setConnecting(true);
     setJiraError('');
+    setConnectSuccess(false);
 
-    // Step 1: Test connection with API Token (Basic Auth)
+    // Test connection
     const testResult = await testJiraConnection(url.trim(), token.trim());
 
     if (!testResult.success) {
@@ -112,12 +116,28 @@ export default function JiraConnect() {
       return;
     }
 
-    // Step 2: Fetch issues
+    // Build config to save
+    const configToSave = {
+      url: url.trim(),
+      token: token.trim(),
+      projectKey: form.projectKey.trim().toUpperCase(),
+      assignee: form.assignee.trim(),
+      jql: form.jql,
+    };
+
+    // In wizard mode: only test connection, then show success
+    if (isWizard) {
+      setConnectSuccess(true);
+      setConnecting(false);
+      return;
+    }
+
+    // Dashboard mode: also fetch issues
     try {
-      const tasks = await fetchJiraIssues(url.trim(), token.trim(), projectKey.trim().toUpperCase(), form.assignee.trim(), form.jql);
+      const tasks = await fetchJiraIssues(url.trim(), token.trim(), form.projectKey.trim().toUpperCase(), form.assignee.trim(), form.jql);
 
       if (tasks.length === 0) {
-        setJiraError('Không tìm thấy công việc nào trong project "' + projectKey.trim().toUpperCase() + '". Kiểm tra lại Project Key.');
+        setJiraError('Không tìm thấy công việc nào trong project "' + form.projectKey.trim().toUpperCase() + '". Kiểm tra lại Project Key.');
         setConnecting(false);
         return;
       }
@@ -127,8 +147,7 @@ export default function JiraConnect() {
       const totalEst = activeTasks.reduce((s, t) => s + (t.originalEstimateHr || t.estimateHr || 0), 0);
       const stats = `${activeTasks.length} công việc · ${totalHr.toFixed(1)} giờ đã log · ${totalEst.toFixed(1)} giờ ước tính`;
 
-      // Electron: save config to persistent store (not localStorage, for security)
-      const configToSave = { url: url.trim(), token: token.trim(), projectKey: projectKey.trim().toUpperCase(), assignee: form.assignee.trim(), jql: form.jql };
+      // Electron: save config to persistent store
       if (window.electronAPI?.isElectron) {
         try {
           await window.electronAPI.storeSet('jira-config', configToSave);
@@ -137,11 +156,10 @@ export default function JiraConnect() {
         }
       }
 
-      // Save config in context (also persisted to localStorage via effect)
       dispatch({ type: 'SET_JIRA_CONFIG', payload: configToSave });
       dispatch({ type: 'SET_JIRA_CONNECTED', payload: true });
       dispatch({ type: 'SET_DATA_SOURCE', payload: 'jira' });
-      dispatch({ type: 'SET_FILE_INFO', payload: { fileName: projectKey.trim().toUpperCase(), fileStats: stats } });
+      dispatch({ type: 'SET_FILE_INFO', payload: { fileName: form.projectKey.trim().toUpperCase(), fileStats: stats } });
       dispatch({ type: 'SET_TASKS', payload: tasks });
       dispatch({ type: 'SET_OT_LEAVE', payload: { otTotal: 0, leaveTotal: 0 } });
       try { localStorage.removeItem('jira-dash-ot-leave'); } catch(e) {}
@@ -153,7 +171,7 @@ export default function JiraConnect() {
     } finally {
       setConnecting(false);
     }
-  }, [form, dispatch]);
+  }, [form, dispatch, isWizard]);
 
   // Allow reconnecting with different credentials
   const handleReconnect = useCallback(() => {
@@ -183,12 +201,20 @@ export default function JiraConnect() {
     }
     setConnecting(true);
     setJiraError('');
+    setConnectSuccess(false);
 
     try {
       // Step 1: Test connection with cookies (no token needed)
       const testResult = await testJiraConnection('', '');
       if (!testResult.success) {
         setJiraError(testResult.error);
+        setConnecting(false);
+        return;
+      }
+
+      // In wizard mode: only test connection
+      if (isWizard) {
+        setConnectSuccess(true);
         setConnecting(false);
         return;
       }
@@ -231,7 +257,7 @@ export default function JiraConnect() {
     } finally {
       setConnecting(false);
     }
-  }, [form, dispatch]);
+  }, [form, dispatch, isWizard]);
 
   // Auto-fetch data when cookie login succeeds (if user has already filled project key)
   useEffect(() => {
@@ -239,6 +265,16 @@ export default function JiraConnect() {
     if (window.electronAPI?.isElectron) {
       cleanup = window.electronAPI.onLoginSuccess(async () => {
         setCookieLoginStatus('loggedin');
+        if (isWizard) {
+          // In wizard mode, just test connection on successful login
+          const testResult = await testJiraConnection('', '');
+          if (testResult.success) {
+            setConnectSuccess(true);
+          } else {
+            setJiraError(testResult.error);
+          }
+          return;
+        }
         // If user already entered a project key, auto-fetch
         if (form.projectKey.trim()) {
           await handleCookieFetchData(form.projectKey);
@@ -248,9 +284,18 @@ export default function JiraConnect() {
     return () => {
       if (cleanup) cleanup();
     };
-  }, [form.projectKey, handleCookieFetchData]);
+  }, [form.projectKey, handleCookieFetchData, isWizard]);
 
   const JIRA_URL = 'https://20.84.97.109:3033';
+
+  const handleProceed = useCallback(() => {
+    if (onConnected) {
+      onConnected({
+        url: form.url.trim(),
+        token: form.token.trim(),
+      });
+    }
+  }, [form, onConnected]);
 
   return (
     <motion.div
@@ -261,236 +306,263 @@ export default function JiraConnect() {
       className="w-full max-w-lg mx-auto"
     >
       <div className="space-y-4">
-            {/* Previously connected info */}
-            {state.jiraConnected && state.jiraConfig.projectKey && (
-              <div className="p-3 rounded-lg bg-[var(--success)]/10 border border-[var(--success)]/30 text-sm flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-[var(--success)] mt-0.5 flex-shrink-0" />
-                <div className="text-[var(--text-primary)]">
-                  Đã kết nối <strong>{state.jiraConfig.projectKey}</strong> (
-                  <span className="text-[var(--text-secondary)]">{state.jiraConfig.url}</span>)
-                  <br />
-                  <span className="text-xs text-[var(--text-tertiary)]">
-                    <button
-                      onClick={handleReconnect}
-                      className="text-[var(--accent)] hover:underline cursor-pointer"
-                    >
-                      Kết nối lại
-                    </button>
-                    {' · '}
-                    <button
-                      onClick={() => dispatch({ type: 'RESET' })}
-                      className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:underline cursor-pointer"
-                    >
-                      Quay lại
-                    </button>
-                  </span>
-                </div>
-              </div>
+        {isWizard && (
+          <>
+            {/* Back button */}
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="flex items-center gap-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Quay lại
+              </button>
             )}
 
-            {/* Electron: In-app JIRA login (SSO) */}
-            {window.electronAPI?.isElectron && (
-              <div className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center gap-2 mb-3">
-                  <LogIn className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <span className="text-sm font-semibold text-blue-800 dark:text-blue-300">
-                    Đăng nhập JIRA (SSO)
-                  </span>
-                  {cookieLoginStatus === 'loggedin' && (
-                    <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full ml-auto">
-                      Đã đăng nhập
-                    </span>
-                  )}
-                </div>
+            {/* Step title */}
+            <div className="text-center mb-2">
+              <h2 className="text-xl font-bold text-[var(--text-primary)]">Kết nối JIRA</h2>
+              <p className="text-sm text-[var(--text-tertiary)] mt-1">Bước 2/4</p>
+            </div>
+          </>
+        )}
 
-                <p className="text-xs text-blue-600 dark:text-blue-400 mb-3">
-                  Đăng nhập qua Microsoft SSO ngay trong ứng dụng. Không cần API Token.
-                </p>
+        {/* Previously connected info (dashboard mode only) */}
+        {!isWizard && state.jiraConnected && state.jiraConfig.projectKey && (
+          <div className="p-3 rounded-lg bg-[var(--success)]/10 border border-[var(--success)]/30 text-sm flex items-start gap-2.5">
+            <CheckCircle2 className="w-4 h-4 text-[var(--success)] mt-0.5 flex-shrink-0" />
+            <div className="text-[var(--text-primary)]">
+              Đã kết nối <strong>{state.jiraConfig.projectKey}</strong> (
+              <span className="text-[var(--text-secondary)]">{state.jiraConfig.url}</span>)
+              <br />
+              <span className="text-xs text-[var(--text-tertiary)]">
+                <button
+                  onClick={handleReconnect}
+                  className="text-[var(--accent)] hover:underline cursor-pointer"
+                >
+                  Kết nối lại
+                </button>
+                {' · '}
+                <button
+                  onClick={() => dispatch({ type: 'RESET' })}
+                  className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:underline cursor-pointer"
+                >
+                  Quay lại
+                </button>
+              </span>
+            </div>
+          </div>
+        )}
 
-                {cookieLoginStatus === 'loggedin' ? (
-                  <div className="space-y-2">
-                    <input
-                      type="text"
-                      value={form.projectKey}
-                      onChange={(e) => handleFormChange('projectKey', e.target.value.toUpperCase())}
-                      placeholder="BXDBE"
-                      className="input-like w-full uppercase text-sm"
-                      disabled={connecting}
-                    />
-                    <button
-                      onClick={() => handleCookieFetchData(form.projectKey)}
-                      disabled={connecting || !form.projectKey.trim()}
-                      className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      {connecting ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Đang tải dữ liệu...
-                        </>
-                      ) : (
-                        <>
-                          <Wifi className="w-4 h-4" />
-                          Tải dữ liệu từ JIRA
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={async () => {
-                        await window.electronAPI.jiraLogout();
-                        setCookieLoginStatus(null);
-                      }}
-                      className="w-full py-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer flex items-center justify-center gap-1"
-                    >
-                      <LogOut className="w-3 h-3" />
-                      Đăng xuất
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleCookieLogin}
-                    disabled={cookieLoginStatus === 'loading'}
-                    className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    {cookieLoginStatus === 'loading' ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Đang mở cửa sổ đăng nhập...
-                      </>
-                    ) : (
-                      <>
-                        <LogIn className="w-4 h-4" />
-                        Đăng nhập JIRA (Microsoft SSO)
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* URL */}
+        {/* Success message (wizard mode) */}
+        {isWizard && connectSuccess && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-3 rounded-lg bg-[var(--success)]/10 border border-[var(--success)]/30 text-sm flex items-start gap-2.5"
+          >
+            <CheckCircle2 className="w-5 h-5 text-[var(--success)] mt-0.5 flex-shrink-0" />
             <div>
-              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
-                URL JIRA
-              </label>
-              <input
-                type="text"
-                value={form.url}
-                onChange={(e) => handleFormChange('url', e.target.value)}
-                placeholder="https://jira.company.com"
-                className="input-like w-full"
-                disabled={connecting}
-              />
+              <span className="font-semibold text-[var(--success)]">Kết nối thành công!</span>
+              <br />
+              <span className="text-xs text-[var(--text-tertiary)]">
+                JIRA API hoạt động. Bạn có thể tiếp tục chọn dự án.
+              </span>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Electron: In-app JIRA login (SSO) */}
+        {window.electronAPI?.isElectron && (
+          <div className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center gap-2 mb-3">
+              <LogIn className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-sm font-semibold text-blue-800 dark:text-blue-300">
+                Đăng nhập JIRA (SSO)
+              </span>
+              {cookieLoginStatus === 'loggedin' && (
+                <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full ml-auto">
+                  Đã đăng nhập
+                </span>
+              )}
             </div>
 
+            <p className="text-xs text-blue-600 dark:text-blue-400 mb-3">
+              Đăng nhập qua Microsoft SSO ngay trong ứng dụng. Không cần API Token.
+            </p>
 
-
-            {/* API Token */}
-            <div>
-              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
-                API Token
-              </label>
-              <div className="relative">
+            {cookieLoginStatus === 'loggedin' ? (
+              <div className="space-y-2">
                 <input
-                  type={showToken ? 'text' : 'password'}
-                  value={form.token}
-                  onChange={(e) => handleFormChange('token', e.target.value)}
-                  placeholder="Nhập API Token từ JIRA"
-                  className="input-like w-full pr-10"
+                  type="text"
+                  value={form.projectKey}
+                  onChange={(e) => handleFormChange('projectKey', e.target.value.toUpperCase())}
+                  placeholder="BXDBE"
+                  className="input-like w-full uppercase text-sm font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   disabled={connecting}
                 />
                 <button
-                  type="button"
-                  onClick={() => setShowToken(!showToken)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer p-1"
-                  tabIndex={-1}
+                  onClick={() => handleCookieFetchData(form.projectKey)}
+                  disabled={connecting || !form.projectKey.trim()}
+                  className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
-                  {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {connecting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {isWizard ? 'Đang kiểm tra...' : 'Đang tải dữ liệu...'}
+                    </>
+                  ) : (
+                    <>
+                      <Wifi className="w-4 h-4" />
+                      {isWizard ? 'Kiểm tra kết nối (SSO)' : 'Tải dữ liệu từ JIRA'}
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={async () => {
+                    await window.electronAPI.jiraLogout();
+                    setCookieLoginStatus(null);
+                  }}
+                  className="w-full py-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <LogOut className="w-3 h-3" />
+                  Đăng xuất
                 </button>
               </div>
-            </div>
-
-            {/* Email người thực hiện (tùy chọn) */}
-            <div>
-              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
-                Email người thực hiện <span className="text-[var(--text-tertiary)] font-normal">(tùy chọn)</span>
-              </label>
-              <input
-                type="email"
-                value={form.assignee}
-                onChange={(e) => handleFormChange('assignee', e.target.value)}
-                placeholder="user@company.com"
-                className="input-like w-full"
-                disabled={connecting}
-              />
-            </div>
-
-            {/* Project Key */}
-            <div>
-              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
-                Project Key
-              </label>
-              <input
-                type="text"
-                value={form.projectKey}
-                onChange={(e) => handleFormChange('projectKey', e.target.value.toUpperCase())}
-                placeholder="BXDBE"
-                className="input-like w-full uppercase"
-                disabled={connecting}
-              />
-            </div>
-
-            {/* JQL (tùy chọn) */}
-            <div>
-              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
-                JQL <span className="text-[var(--text-tertiary)] font-normal">(tùy chọn - nâng cao)</span>
-              </label>
-              <textarea
-                value={form.jql || ''}
-                onChange={(e) => handleFormChange('jql', e.target.value)}
-                placeholder='VD: assignee = "user@company.com" AND "Start Date (Time)" >= startOfMonth()'
-                rows={3}
-                className="w-full px-3 py-2 text-sm bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 focus:border-[var(--accent)] resize-none font-mono"
-                disabled={connecting}
-              />
-              <p className="text-[10px] text-[var(--text-tertiary)] mt-1">Để trống để lấy tất cả công việc. JQL cho phép lọc nâng cao.</p>
-            </div>
-
-
-            {/* Security warning */}
-            <div className="flex items-start gap-2 text-xs text-[var(--warning)] px-1">
-              <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-              <span>{window.electronAPI?.isElectron
-                ? 'Token được lưu an toàn trong ổ cứng (Electron userData). Dùng "Đăng nhập JIRA (SSO)" để không cần token.'
-                : 'Token được lưu trong trình duyệt. Không dùng trên máy công cộng.'}</span>
-            </div>
-
-            {/* Error message */}
-            {jiraError && (
-              <div className="p-3 rounded-lg bg-[var(--danger)]/10 border border-[var(--danger)]/30 text-sm flex items-start gap-2.5">
-                <AlertCircle className="w-4 h-4 text-[var(--danger)] mt-0.5 flex-shrink-0" />
-                <span className="text-[var(--danger)] whitespace-pre-line">{jiraError}</span>
-              </div>
+            ) : (
+              <button
+                onClick={handleCookieLogin}
+                disabled={cookieLoginStatus === 'loading'}
+                className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                {cookieLoginStatus === 'loading' ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Đang mở cửa sổ đăng nhập...
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="w-4 h-4" />
+                    Đăng nhập JIRA (Microsoft SSO)
+                  </>
+                )}
+              </button>
             )}
+          </div>
+        )}
 
-            {/* Connect button */}
-            <button
-              onClick={handleConnect}
+        {/* URL */}
+        <div>
+          <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
+            URL JIRA
+          </label>
+          <input
+            type="text"
+            value={form.url}
+            onChange={(e) => handleFormChange('url', e.target.value)}
+            placeholder="https://jira.company.com"
+            className="input-like w-full font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+            disabled={connecting}
+          />
+        </div>
+
+        {/* API Token */}
+        <div>
+          <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
+            API Token
+          </label>
+          <div className="relative">
+            <input
+              type={showToken ? 'text' : 'password'}
+              value={form.token}
+              onChange={(e) => handleFormChange('token', e.target.value)}
+              placeholder="Nhập API Token từ JIRA"
+              className="input-like w-full pr-10 font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
               disabled={connecting}
-              className="w-full py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+            />
+            <button
+              type="button"
+              onClick={() => setShowToken(!showToken)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer p-1"
+              tabIndex={-1}
             >
-              {connecting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Đang kết nối...
-                </>
-              ) : (
-                <>
-                  <Wifi className="w-4 h-4" />
-                  {state.jiraConnected ? 'Kết nối lại & Tải dữ liệu' : 'Kết nối & Tải dữ liệu'}
-                </>
-              )}
+              {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
+        </div>
+
+        {/* JQL (tùy chọn) — only in dashboard mode */}
+        {!isWizard && (
+          <div>
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
+              JQL <span className="text-[var(--text-tertiary)] font-normal">(tùy chọn - nâng cao)</span>
+            </label>
+            <textarea
+              value={form.jql || ''}
+              onChange={(e) => handleFormChange('jql', e.target.value)}
+              placeholder='VD: assignee = "user@company.com" AND "Start Date (Time)" >= startOfMonth()'
+              rows={3}
+              className="w-full px-3 py-2 text-sm bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 focus:border-[var(--accent)] resize-none font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              disabled={connecting}
+            />
+            <p className="text-[10px] text-[var(--text-tertiary)] mt-1">Để trống để lấy tất cả công việc. JQL cho phép lọc nâng cao.</p>
+          </div>
+        )}
+
+        {/* Security warning */}
+        <div className="flex items-start gap-2 text-xs text-[var(--warning)] px-1">
+          <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+          <span>{window.electronAPI?.isElectron
+            ? 'Token được lưu an toàn trong ổ cứng (Electron userData). Dùng "Đăng nhập JIRA (SSO)" để không cần token.'
+            : 'Token được lưu trong trình duyệt. Không dùng trên máy công cộng.'}</span>
+        </div>
+
+        {/* Error message */}
+        {jiraError && (
+          <div className="p-3 rounded-lg bg-[var(--danger)]/10 border border-[var(--danger)]/30 text-sm flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-[var(--danger)] mt-0.5 flex-shrink-0" />
+            <span className="text-[var(--danger)] whitespace-pre-line">{jiraError}</span>
+          </div>
+        )}
+
+        {/* Connect / Kiểm tra kết nối button */}
+        <button
+          onClick={handleConnect}
+          disabled={connecting || connectSuccess}
+          className="w-full py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+        >
+          {connecting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              {isWizard ? 'Đang kiểm tra...' : 'Đang kết nối...'}
+            </>
+          ) : (
+            <>
+              {isWizard ? <Wifi className="w-4 h-4" /> : <Wifi className="w-4 h-4" />}
+              {isWizard ? 'Kiểm tra kết nối' : (state.jiraConnected ? 'Kết nối lại & Tải dữ liệu' : 'Kết nối & Tải dữ liệu')}
+            </>
+          )}
+        </button>
+
+        {/* Tiếp tục button (wizard mode, after success) */}
+        {isWizard && connectSuccess && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <button
+              onClick={handleProceed}
+              className="w-full py-2.5 bg-[var(--success)] hover:opacity-90 text-white rounded-lg font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              <ArrowRight className="w-4 h-4" />
+              Tiếp tục
+            </button>
+          </motion.div>
+        )}
+
+
+      </div>
     </motion.div>
   );
 }

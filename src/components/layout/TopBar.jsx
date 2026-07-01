@@ -1,4 +1,4 @@
-import { Sun, Moon, Menu, Wifi, FileText } from 'lucide-react';
+import { Sun, Moon, Menu, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
 
@@ -101,6 +101,22 @@ export default function TopBar({ onToggleMobile }) {
             )}
           </motion.div>
         </motion.button>
+
+        {/* Separator */}
+        <span className="w-px h-5 bg-[var(--border-primary)]" />
+
+        {/* Logout button */}
+        <button
+          onClick={() => {
+            localStorage.removeItem('jira-dash-auth');
+            window.location.reload();
+          }}
+          className="p-1.5 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer"
+          title="Đăng xuất"
+          aria-label="Đăng xuất"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
       </div>
     </header>
   );
