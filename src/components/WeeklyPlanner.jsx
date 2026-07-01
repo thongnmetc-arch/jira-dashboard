@@ -261,7 +261,7 @@ export default function WeeklyPlanner() {
   // ── Load JIRA tasks ──
 
   const loadJiraTasks = useCallback(async (force = false) => {
-    const { url, email, token, projectKey, jql } = state.jiraConfig || {};
+    const { url, assignee, token, projectKey, jql } = state.jiraConfig || {};
     if (!url || !token || !projectKey) return;
 
     // Only auto-load for current week
@@ -278,7 +278,20 @@ export default function WeeklyPlanner() {
 
     setLoadingJira(true);
     try {
-      const tasks = await fetchJiraIssues(url, token, projectKey, email || '', jql || '');
+      // Build query with assignee filter from wizard email
+      let queryJql = jql || '';
+      if (assignee && assignee.trim()) {
+        const assigneeFilter = `assignee = "${assignee.trim()}"`;
+        if (queryJql.trim()) {
+          // Append to existing JQL
+          queryJql = `(${queryJql.trim()}) AND ${assigneeFilter}`;
+        } else {
+          queryJql = `project = "${projectKey}" AND ${assigneeFilter} ORDER BY created DESC`;
+        }
+      } else if (!queryJql.trim()) {
+        queryJql = `project = "${projectKey}" ORDER BY created DESC`;
+      }
+      const tasks = await fetchJiraIssues(url, token, projectKey, '', queryJql);
 
       // Filter to this week's date range
       const weekStart = new Date(monday);
@@ -427,7 +440,7 @@ export default function WeeklyPlanner() {
     setLogResults(null);
 
     try {
-      const email = state.jiraConfig.email || '';
+      const email = state.jiraConfig.assignee || '';
       const result = await logMultipleWorklogs(url, email, token, entries);
 
       // Mark successfully logged tasks
