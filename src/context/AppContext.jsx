@@ -33,7 +33,7 @@ const initialState = {
   // Bookmarklet Panel state
   bookmarkletPanelOpen: false,
   // JIRA connection state
-  jiraConfig: { url: '', email: '', token: '', projectKey: '', jql: '' },
+  jiraConfig: { url: '', token: '', projectKey: '', assignee: '', jql: '' },
   jiraConnected: false,
   dataSource: '', // '' | 'csv' | 'jira' | 'jira-bookmarklet'
   jiraAutoRefresh: 'off', // 'off' | '5' | '15' | '30' | '60'
@@ -302,7 +302,7 @@ export function AppProvider({ children }) {
     // Load persisted state
     let darkMode = false;
     let otLeaveData = { otTotal: 0, leaveTotal: 0 };
-    let jiraConfig = { url: '', email: '', token: '', projectKey: '' };
+    let jiraConfig = { url: '', token: '', projectKey: '', assignee: '' };
     let labelDefs = {};
     let labelAssignments = {};
     let autoRules = [];
@@ -326,7 +326,7 @@ export function AppProvider({ children }) {
       const savedConfig = localStorage.getItem('jira-dash-config');
       if (savedConfig) {
         const parsed = JSON.parse(savedConfig);
-        jiraConfig = { url: '', email: '', token: '', projectKey: '', jql: '', ...parsed };
+        jiraConfig = { url: '', token: '', projectKey: '', jql: '', ...parsed };
       }
       const savedLabels = localStorage.getItem('jira-dash-labels');
       if (savedLabels) {

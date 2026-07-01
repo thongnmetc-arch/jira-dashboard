@@ -2,12 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Wifi, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, Info, LogIn, LogOut } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { testJiraConnection, loginWithPassword, fetchJiraIssues } from '../utils/jiraApi';
+import { testJiraConnection, fetchJiraIssues } from '../utils/jiraApi';
 
 export default function JiraConnect() {
   const { state, dispatch } = useApp();
 
-  const [form, setForm] = useState({ url: '', email: '', token: '', projectKey: '', jql: '' });
+  const [form, setForm] = useState({ url: '', token: '', projectKey: '', assignee: '', jql: '' });
   const [showToken, setShowToken] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [jiraError, setJiraError] = useState('');
@@ -53,9 +53,9 @@ export default function JiraConnect() {
           if (saved) {
             setForm({
               url: saved.url || 'https://20.84.97.109:3033',
-              email: saved.email || 'thongnm@etc.vn',
               token: saved.token || '',
               projectKey: saved.projectKey || 'BXDBE',
+              assignee: saved.assignee || '',
               jql: saved.jql || '',
             });
             return;
@@ -67,10 +67,10 @@ export default function JiraConnect() {
 
       // Fallback: load from context (localStorage)
       if (state.jiraConfig.url && state.jiraConfig.projectKey) {
-        setForm({ url: state.jiraConfig.url, email: state.jiraConfig.email, token: state.jiraConfig.token, projectKey: state.jiraConfig.projectKey, jql: state.jiraConfig.jql || '' });
+        setForm({ url: state.jiraConfig.url, token: state.jiraConfig.token, projectKey: state.jiraConfig.projectKey, assignee: state.jiraConfig.assignee || '', jql: state.jiraConfig.jql || '' });
       } else {
         // Set defaults for self-hosted JIRA
-        setForm({ url: 'https://20.84.97.109:3033', email: '', token: '', projectKey: 'BXDBE', jql: '' });
+        setForm({ url: 'https://20.84.97.109:3033', token: '', projectKey: 'BXDBE', assignee: '', jql: '' });
       }
     }
     loadSavedConfig();
@@ -83,10 +83,9 @@ export default function JiraConnect() {
 
   const handleConnect = useCallback(async () => {
     // Validate
-    const { url, email, token, projectKey } = form;
+    const { url, token, projectKey } = form;
     if (!url.trim()) { setJiraError('Vui lòng nhập URL JIRA.'); return; }
-    if (!email.trim()) { setJiraError('Vui lòng nhập email.'); return; }
-    if (!token.trim()) { setJiraError('Vui lòng nhập mật khẩu.'); return; }
+    if (!token.trim()) { setJiraError('Vui lòng nhập API Token.'); return; }
     if (!projectKey.trim()) { setJiraError('Vui lòng nhập Project Key.'); return; }
 
     // Basic URL validation
@@ -104,8 +103,8 @@ export default function JiraConnect() {
     setConnecting(true);
     setJiraError('');
 
-    // Step 1: Login with password (session-based)
-    const testResult = await loginWithPassword(url.trim(), email.trim(), token.trim());
+    // Step 1: Test connection with API Token (Basic Auth)
+    const testResult = await testJiraConnection(url.trim(), token.trim());
 
     if (!testResult.success) {
       setJiraError(testResult.error);
@@ -115,7 +114,7 @@ export default function JiraConnect() {
 
     // Step 2: Fetch issues
     try {
-      const tasks = await fetchJiraIssues(url.trim(), email.trim(), token.trim(), projectKey.trim().toUpperCase(), form.jql);
+      const tasks = await fetchJiraIssues(url.trim(), token.trim(), projectKey.trim().toUpperCase(), form.assignee.trim(), form.jql);
 
       if (tasks.length === 0) {
         setJiraError('Không tìm thấy công việc nào trong project "' + projectKey.trim().toUpperCase() + '". Kiểm tra lại Project Key.');
@@ -129,7 +128,7 @@ export default function JiraConnect() {
       const stats = `${activeTasks.length} công việc · ${totalHr.toFixed(1)} giờ đã log · ${totalEst.toFixed(1)} giờ ước tính`;
 
       // Electron: save config to persistent store (not localStorage, for security)
-      const configToSave = { url: url.trim(), email: email.trim(), token: token.trim(), projectKey: projectKey.trim().toUpperCase(), jql: form.jql };
+      const configToSave = { url: url.trim(), token: token.trim(), projectKey: projectKey.trim().toUpperCase(), assignee: form.assignee.trim(), jql: form.jql };
       if (window.electronAPI?.isElectron) {
         try {
           await window.electronAPI.storeSet('jira-config', configToSave);
@@ -187,7 +186,7 @@ export default function JiraConnect() {
 
     try {
       // Step 1: Test connection with cookies (no token needed)
-      const testResult = await testJiraConnection('', '', '');
+      const testResult = await testJiraConnection('', '');
       if (!testResult.success) {
         setJiraError(testResult.error);
         setConnecting(false);
@@ -195,7 +194,7 @@ export default function JiraConnect() {
       }
 
       // Step 2: Fetch issues using cookie-based API (no url/email/token)
-      const tasks = await fetchJiraIssues('', '', '', projectKey.trim().toUpperCase(), form.jql);
+      const tasks = await fetchJiraIssues('', '', projectKey.trim().toUpperCase(), form.assignee.trim(), form.jql);
 
       if (tasks.length === 0) {
         setJiraError('Không tìm thấy công việc nào trong project "' + projectKey.trim().toUpperCase() + '". Kiểm tra lại Project Key.');
@@ -209,7 +208,7 @@ export default function JiraConnect() {
       const stats = `${activeTasks.length} công việc · ${totalHr.toFixed(1)} giờ đã log · ${totalEst.toFixed(1)} giờ ước tính`;
 
       // Save JIRA config (project key only, no token needed)
-      const configToSave = { url: JIRA_URL, email: '', token: '', projectKey: projectKey.trim().toUpperCase(), jql: form.jql };
+      const configToSave = { url: JIRA_URL, token: '', projectKey: projectKey.trim().toUpperCase(), assignee: form.assignee.trim(), jql: form.jql };
       if (window.electronAPI?.isElectron) {
         try {
           await window.electronAPI.storeSet('jira-config', configToSave);
@@ -383,32 +382,19 @@ export default function JiraConnect() {
               />
             </div>
 
-            {/* Email */}
-            <div>
-              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
-                Email
-              </label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => handleFormChange('email', e.target.value)}
-                placeholder="user@company.com"
-                className="input-like w-full"
-                disabled={connecting}
-              />
-            </div>
 
-            {/* Mật khẩu JIRA */}
+
+            {/* API Token */}
             <div>
               <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
-                Mật khẩu JIRA
+                API Token
               </label>
               <div className="relative">
                 <input
                   type={showToken ? 'text' : 'password'}
                   value={form.token}
                   onChange={(e) => handleFormChange('token', e.target.value)}
-                  placeholder="Mật khẩu JIRA"
+                  placeholder="Nhập API Token từ JIRA"
                   className="input-like w-full pr-10"
                   disabled={connecting}
                 />
@@ -421,6 +407,21 @@ export default function JiraConnect() {
                   {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+            </div>
+
+            {/* Email người thực hiện (tùy chọn) */}
+            <div>
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
+                Email người thực hiện <span className="text-[var(--text-tertiary)] font-normal">(tùy chọn)</span>
+              </label>
+              <input
+                type="email"
+                value={form.assignee}
+                onChange={(e) => handleFormChange('assignee', e.target.value)}
+                placeholder="user@company.com"
+                className="input-like w-full"
+                disabled={connecting}
+              />
             </div>
 
             {/* Project Key */}
@@ -438,23 +439,22 @@ export default function JiraConnect() {
               />
             </div>
 
-            {/* JQL Filter */}
+            {/* JQL (tùy chọn) */}
             <div>
-              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
-                JQL (tùy chọn)
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
+                JQL <span className="text-[var(--text-tertiary)] font-normal">(tùy chọn - nâng cao)</span>
               </label>
               <textarea
-                value={form.jql}
+                value={form.jql || ''}
                 onChange={(e) => handleFormChange('jql', e.target.value)}
-                placeholder={`project = "BXDBE" ORDER BY created DESC`}
+                placeholder='VD: assignee = "user@company.com" AND "Start Date (Time)" >= startOfMonth()'
                 rows={3}
                 className="w-full px-3 py-2 text-sm bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 focus:border-[var(--accent)] resize-none font-mono"
                 disabled={connecting}
               />
-              <p className="text-xs text-[var(--text-tertiary)] mt-1">
-                Để trống để lấy tất cả issue trong project.
-              </p>
+              <p className="text-[10px] text-[var(--text-tertiary)] mt-1">Để trống để lấy tất cả công việc. JQL cho phép lọc nâng cao.</p>
             </div>
+
 
             {/* Security warning */}
             <div className="flex items-start gap-2 text-xs text-[var(--warning)] px-1">

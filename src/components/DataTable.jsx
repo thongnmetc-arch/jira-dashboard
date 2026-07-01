@@ -299,10 +299,10 @@ export default function DataTable() {
                   {t.assignee || '—'}
                 </td>
                 <td className="px-2.5 py-2 text-[13px] text-right tabular-nums whitespace-nowrap text-[var(--text-primary)] font-mono">
-                  {t.timeSpentHr.toFixed(1)}h
+                  {(t.timeSpentHr ?? 0).toFixed(1)}h
                 </td>
                 <td className="px-2.5 py-2 text-[13px] text-right tabular-nums whitespace-nowrap text-[var(--text-secondary)] font-mono">
-                  {t.originalEstimateHr.toFixed(1)}h
+                  {(t.originalEstimateHr ?? 0).toFixed(1)}h
                 </td>
                 <td className="px-2.5 py-2 text-[13px] text-[var(--text-secondary)]">
                   {t.status || '—'}

@@ -34,47 +34,67 @@ const icons = [
 ];
 
 export default function StatsGrid({ tasks }) {
-  const stats = useMemo(() => {
-    // Only count tasks with status Resolved or Closed (case-insensitive)
-    const activeTasks = tasks.filter(t => {
-      const s = t.status?.toLowerCase();
-      return s === 'resolved' || s === 'closed';
-    });
-    const totalHr = activeTasks.reduce((s, t) => s + t.timeSpentHr, 0);
-    const totalEst = activeTasks.reduce((s, t) => s + (t.originalEstimateHr || t.estimateHr || 0), 0);
-    const avgHr = activeTasks.length > 0 ? totalHr / activeTasks.length : 0;
-    return [
-      { label: 'Tổng số công việc', value: tasks.length, decimals: 0, sub: 'tất cả trạng thái' },
-      { label: 'Tổng giờ đã log', value: totalHr, decimals: 1, sub: 'giờ (Time Spent)' },
-      { label: 'Tổng giờ ước tính', value: totalEst, decimals: 1, sub: 'giờ (Original Estimate)' },
-      { label: 'Thời gian TB mỗi task', value: avgHr, decimals: 1, sub: 'giờ / công việc' },
-    ];
+  const { overallStats } = useMemo(() => {
+    // ---- Row 1: all tasks, all statuses ----
+    const totalCount = tasks.length;
+    const resolvedTasks = tasks.filter(t => { const s = t.status?.toLowerCase(); return s === 'resolved' || s === 'closed'; });
+    const totalSpent = resolvedTasks.reduce((s, t) => s + (t.timeSpentHr || 0), 0);
+    const totalEst = resolvedTasks.reduce((s, t) => s + (t.originalEstimateHr || t.estimateHr || 0), 0);
+    const overallAvg = resolvedTasks.length > 0 ? totalSpent / resolvedTasks.length : 0;
+
+    return {
+      overallStats: [
+        { label: 'Tổng số CV', value: totalCount, decimals: 0, sub: 'tất cả trạng thái' },
+        { label: 'Giờ đã log', value: totalSpent, decimals: 1, sub: 'giờ (Time Spent)' },
+        { label: 'Giờ ước tính', value: totalEst, decimals: 1, sub: 'giờ (Estimate)' },
+        { label: 'TB mỗi task', value: overallAvg, decimals: 1, sub: 'giờ / công việc' },
+      ],
+    };
   }, [tasks]);
 
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-      {stats.map((stat, i) => (
-        <motion.div
-          key={stat.label}
-          custom={i}
-          variants={cardVariants}
-          initial="hidden"
-          animate="visible"
-          className="card rounded-xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-800/50 border border-[var(--border-primary)]"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-widest">
-              {stat.label}
-            </div>
-            <div className="p-1.5 rounded-md bg-[var(--bg-secondary)]">
-              {icons[i]}
-            </div>
+  function renderStatCards(stats) {
+    return stats.map((stat, i) => (
+      <motion.div
+        key={stat.label}
+        custom={i}
+        variants={cardVariants}
+        initial="hidden"
+        animate="visible"
+        className="card rounded-xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-800/50 border border-[var(--border-primary)]"
+      >
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-widest">
+            {stat.label}
           </div>
-          <AnimatedNumber value={stat.value} decimals={stat.decimals} />
-          <div className="text-[11px] text-[var(--text-tertiary)] mt-0.5">{stat.sub}</div>
-        </motion.div>
-      ))}
-      <EffortCard tasks={tasks} />
-    </div>
+          <div className="p-1.5 rounded-md bg-[var(--bg-secondary)]">
+            {icons[i]}
+          </div>
+        </div>
+        <AnimatedNumber value={stat.value} decimals={stat.decimals} />
+        <div className="text-[11px] text-[var(--text-tertiary)] mt-0.5">{stat.sub}</div>
+      </motion.div>
+    ));
+  }
+
+  return (
+    <>
+      {/* Row 1 — Tổng quan (all tasks, all statuses) */}
+      <div className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
+        📊 Tổng quan
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+        {renderStatCards(overallStats)}
+        <EffortCard tasks={tasks} variant="avg" />
+      </div>
+
+      {/* Row 2 — Tháng hiện tại (only Resolved / Closed) */}
+      <div className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2 mt-4">
+        📅 Tháng hiện tại
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+        {renderStatCards(overallStats)}
+        <EffortCard tasks={tasks} variant="month" />
+      </div>
+    </>
   );
 }

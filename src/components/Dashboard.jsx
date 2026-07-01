@@ -69,19 +69,14 @@ export default function Dashboard() {
         intervalRef.current = setInterval(async () => {
           try {
             setRefreshError('');
-            const { url, email, token, projectKey, jql } = state.jiraConfig;
-            if (!url || !email || !token || !projectKey) return;
-            const activeTasks = tasks.filter(t => { const s = t.status?.toLowerCase(); return s === 'resolved' || s === 'closed'; });
-            const totalHr = activeTasks.reduce((s, t) => s + t.timeSpentHr, 0);
-            const totalEst = activeTasks.reduce((s, t) => s + (t.originalEstimateHr || t.estimateHr || 0), 0);
-            const stats = `${activeTasks.length} công việc · ${totalHr.toFixed(1)} giờ đã log · ${totalEst.toFixed(1)} giờ ước tính`;
-            dispatch({ type: 'SET_FILE_INFO', payload: { fileName: projectKey, fileStats: stats } });
-            dispatch({ type: 'SET_TASKS', payload: tasks });
-            dispatch({ type: 'SET_OT_LEAVE', payload: { otTotal: 0, leaveTotal: 0 } });
-            try { localStorage.removeItem('jira-dash-ot-leave'); } catch(e) {}
+            const { url, token, projectKey, assignee, jql } = state.jiraConfig;
+            if (!url || !token || !projectKey) return;
+            const freshTasks = await fetchJiraIssues(url, token, projectKey.toUpperCase(), assignee || '', jql || '');
+            if (freshTasks.length === 0) return;
+            dispatch({ type: 'SET_TASKS', payload: freshTasks });
             dispatch({ type: 'SET_LAST_REFRESH_TIME', payload: new Date().toISOString() });
           } catch (err) {
-            setRefreshError('Tự động cập nhật thất bại: ' + err.message);
+            setRefreshError('Tự động cập nhật thất bại: ' + (err.message || 'Lỗi không xác định'));
           }
         }, minutes * 60 * 1000);
       }
@@ -100,24 +95,22 @@ export default function Dashboard() {
     if (state.dataSource !== 'jira' || !state.jiraConnected) return;
     setRefreshing(true);
     setRefreshError('');
-    try {
-      const { url, email, token, projectKey, jql } = state.jiraConfig;
-      if (!url || !email || !token || !projectKey) return;
-      const activeTasks = tasks.filter(t => { const s = t.status?.toLowerCase(); return s === 'resolved' || s === 'closed'; });
-      const totalHr = activeTasks.reduce((s, t) => s + t.timeSpentHr, 0);
-      const totalEst = activeTasks.reduce((s, t) => s + (t.originalEstimateHr || t.estimateHr || 0), 0);
-      const stats = `${activeTasks.length} công việc · ${totalHr.toFixed(1)} giờ đã log · ${totalEst.toFixed(1)} giờ ước tính`;
-      dispatch({ type: 'SET_FILE_INFO', payload: { fileName: projectKey, fileStats: stats } });
-      dispatch({ type: 'SET_TASKS', payload: tasks });
-      dispatch({ type: 'SET_OT_LEAVE', payload: { otTotal: 0, leaveTotal: 0 } });
-      try { localStorage.removeItem('jira-dash-ot-leave'); } catch(e) {}
-      dispatch({ type: 'SET_LAST_REFRESH_TIME', payload: new Date().toISOString() });
-    } catch (err) {
-      setRefreshError('Cập nhật thất bại: ' + err.message);
-    } finally {
-      setRefreshing(false);
-    }
-  }, [state.dataSource, state.jiraConnected, state.jiraConfig, dispatch]);
+      try {
+        const { url, token, projectKey, assignee, jql } = state.jiraConfig;
+        if (!url || !token || !projectKey) return;
+        const freshTasks = await fetchJiraIssues(url, token, projectKey.toUpperCase(), assignee || '', jql || '');
+        if (freshTasks.length === 0) {
+          setRefreshError('Không tìm thấy công việc nào.');
+          return;
+        }
+        dispatch({ type: 'SET_TASKS', payload: freshTasks });
+        dispatch({ type: 'SET_LAST_REFRESH_TIME', payload: new Date().toISOString() });
+      } catch (err) {
+        setRefreshError('Cập nhật thất bại: ' + (err.message || 'Lỗi không xác định'));
+      } finally {
+        setRefreshing(false);
+      }
+    }, [state.dataSource, state.jiraConnected, state.jiraConfig, dispatch]);
 
   const handleReset = () => {
     dispatch({ type: 'RESET' });

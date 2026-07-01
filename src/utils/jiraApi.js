@@ -18,71 +18,14 @@ function buildBaseUrl(url) {
 }
 
 // Helper: build auth header value
-function buildAuth(email, token) {
-  return 'Basic ' + btoa(unescape(encodeURIComponent(email)) + ':' + token);
+function buildAuth(token) {
+  return 'Bearer ' + token;
 }
 
 // Default JIRA URL for cookie-based login (Electron SSO)
 const JIRA_URL = 'https://20.84.97.109:3033';
 
-// ── Cookie-based login via session API (browser) ───────────────────────
 
-/**
- * Login to JIRA Server using username + password via session API.
- * JIRA Server (not Cloud) rejects Basic Auth — must use cookie session.
- * @param {string} url - JIRA base URL (e.g. https://20.84.97.109:3033)
- * @param {string} username - JIRA username
- * @param {string} password - JIRA password
- * @returns {Promise<{success: boolean, user?: string, error?: string}>}
- */
-export async function loginWithPassword(url, username, password) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
-
-  try {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({
-        username: username,
-        password: password,
-      }),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeout);
-
-    if (res.ok) {
-      const data = await res.json();
-      // After login, JSESSIONID cookie is automatically set by browser
-      // Test that we can now call API with the session cookie
-      const testRes = await fetch('/api/jira/rest/api/latest/myself');
-      if (testRes.ok) {
-        const user = await testRes.json();
-        return { success: true, user: user.displayName || user.name };
-      }
-      return { success: false, error: 'Đăng nhập thành công nhưng không thể gọi API. Vui lòng thử lại.' };
-    }
-
-    let errorBody = '';
-    try { const text = await res.text(); errorBody = text.substring(0, 1000); } catch(e) {}
-
-    if (res.status === 401) {
-      return { success: false, error: 'Sai tên đăng nhập hoặc mật khẩu.\n' + errorBody };
-    }
-    if (res.status === 403) {
-      return { success: false, error: 'CAPTCHA hoặc xác thực bị từ chối. Thử đăng nhập trực tiếp trên JIRA trước.\n' + errorBody };
-    }
-    return { success: false, error: `Lỗi ${res.status}: ${errorBody || res.statusText}` };
-  } catch (err) {
-    clearTimeout(timeout);
-    if (err.name === 'AbortError') return { success: false, error: 'Kết nối quá thời gian (15s).' };
-    return { success: false, error: 'Không thể kết nối đến JIRA. Kiểm tra URL.' };
-  }
-}
 
 // ── Cookie-based (Electron SSO login) ──────────────────────────────────
 
@@ -117,14 +60,16 @@ async function electronCookieTestConnection() {
 }
 
 // Fetch issues using captured JIRA session cookies (no Basic Auth)
-async function electronCookieFetchIssues(projectKey, jql) {
+async function electronCookieFetchIssues(projectKey, assignee, jql) {
   const jqls = jql && jql.trim()
     ? [jql.trim().replace(/\n/g, ' ')]
-    : [
-        `project = ${projectKey} ORDER BY created DESC`,
-        `project = "${projectKey}" ORDER BY created DESC`,
-        `project="${projectKey}"`,
-      ];
+    : assignee
+      ? [`project = "${projectKey}" AND assignee = "${assignee}" ORDER BY created DESC`]
+      : [
+          `project = ${projectKey} ORDER BY created DESC`,
+          `project = "${projectKey}" ORDER BY created DESC`,
+          `project="${projectKey}"`,
+        ];
 
   let lastError = null;
 
@@ -170,10 +115,10 @@ async function electronCookieFetchIssues(projectKey, jql) {
 // ── API Token (Basic Auth) — works everywhere ──────────────────────────
 
 // Electron-specific: test connection via IPC (no CORS)
-async function electronTestConnection(url, email, token) {
+async function electronTestConnection(url, token) {
   const baseUrl = buildBaseUrl(url);
   const apiUrl = `${baseUrl}/rest/api/latest/myself`;
-  const auth = buildAuth(email, token);
+  const auth = buildAuth(token);
 
   try {
     const response = await window.electronAPI.jiraFetch(apiUrl, {
@@ -207,18 +152,20 @@ async function electronTestConnection(url, email, token) {
 }
 
 // Electron-specific: fetch issues via IPC (no CORS)
-async function electronFetchIssues(url, email, token, projectKey, jql) {
+async function electronFetchIssues(url, token, projectKey, assignee, jql) {
   const baseUrl = buildBaseUrl(url);
-  const auth = buildAuth(email, token);
+  const auth = buildAuth(token);
 
   // Use custom JQL if provided, otherwise try multiple formats for the projectKey
   const jqls = jql && jql.trim()
     ? [jql.trim().replace(/\n/g, ' ')]
-    : [
-        `project = ${projectKey} ORDER BY created DESC`,
-        `project = "${projectKey}" ORDER BY created DESC`,
-        `project="${projectKey}"`,
-      ];
+    : assignee
+      ? [`project = "${projectKey}" AND assignee = "${assignee}" ORDER BY created DESC`]
+      : [
+          `project = ${projectKey} ORDER BY created DESC`,
+          `project = "${projectKey}" ORDER BY created DESC`,
+          `project="${projectKey}"`,
+        ];
 
   let lastError = null;
 
@@ -267,19 +214,19 @@ async function electronFetchIssues(url, email, token, projectKey, jql) {
 // ── Public API ─────────────────────────────────────────────────────────
 
 // Step 1: Test connection and auth before fetching issues
-export async function testJiraConnection(url, email, token) {
-  // Electron with cookie-based login: ignore url/email/token, use session cookies
+export async function testJiraConnection(url, token) {
+  // Electron with cookie-based login: ignore url/token, use session cookies
   if (window.electronAPI?.isElectron && !token) {
     return electronCookieTestConnection();
   }
   // Electron desktop app — no CORS, call JIRA directly via IPC
   if (window.electronAPI?.isElectron) {
-    return electronTestConnection(url, email, token);
+    return electronTestConnection(url, token);
   }
 
-  let apiPath = '/api/jira/rest/api/latest/myself';
+  let apiPath = '/api/jira/rest/api/latest/search?jql=&maxResults=0';
 
-  const auth = buildAuth(email, token);
+  const auth = buildAuth(token);
 
   console.log('[JIRA API] Testing connection to:', apiPath);
 
@@ -302,8 +249,7 @@ export async function testJiraConnection(url, email, token) {
     console.log('[JIRA API] Test response:', res.status, res.statusText);
 
     if (res.ok) {
-      const user = await res.json();
-      return { success: true, user: user.displayName || user.name };
+      return { success: true };
     }
 
     // Try to read error body
@@ -343,26 +289,28 @@ export async function testJiraConnection(url, email, token) {
 }
 
 // Step 2: Fetch issues (only called after test succeeds)
-export async function fetchJiraIssues(url, email, token, projectKey, jql) {
+export async function fetchJiraIssues(url, token, projectKey, assignee, jql) {
   // Electron with cookie-based login: use session cookies (no token needed)
   if (window.electronAPI?.isElectron && !token) {
-    return electronCookieFetchIssues(projectKey, jql);
+    return electronCookieFetchIssues(projectKey, assignee, jql);
   }
   // Electron desktop app — no CORS, call JIRA directly via IPC
   if (window.electronAPI?.isElectron) {
-    return electronFetchIssues(url, email, token, projectKey, jql);
+    return electronFetchIssues(url, token, projectKey, assignee, jql);
   }
 
   // Use custom JQL if provided, otherwise try multiple formats for the projectKey
   const jqls = jql && jql.trim()
     ? [jql.trim().replace(/\n/g, ' ')]
-    : [
-        `project = ${projectKey} ORDER BY created DESC`,
-        `project = "${projectKey}" ORDER BY created DESC`,
-        `project="${projectKey}"`,
-      ];
+    : assignee
+      ? [`project = "${projectKey}" AND assignee = "${assignee}" ORDER BY created DESC`]
+      : [
+          `project = ${projectKey} ORDER BY created DESC`,
+          `project = "${projectKey}" ORDER BY created DESC`,
+          `project="${projectKey}"`,
+        ];
 
-  const auth = buildAuth(email, token);
+  const auth = buildAuth(token);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
@@ -480,6 +428,8 @@ function parseJiraIssue(issue) {
     timeSpentHr: (fields.timespent || 0) / 3600,
     estimateSec: fields.timeestimate || 0,
     estimateHr: (fields.timeestimate || 0) / 3600,
+    originalEstimateSec: fields.timeoriginalestimate || 0,
+    originalEstimateHr: (fields.timeoriginalestimate || 0) / 3600,
     created: createdDate,
     resolved: resolvedDate,
     startDate: createdDate, // fallback to created when no custom start date

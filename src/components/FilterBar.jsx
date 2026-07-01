@@ -94,7 +94,8 @@ export default function FilterBar() {
           type="date"
           value={state.filters.dateFrom}
           onChange={(e) => updateFilter('dateFrom', e.target.value)}
-          className={filterClass(!!state.filters.dateFrom, 'w-[115px]')}
+          placeholder="Từ ngày"
+          className={filterClass(!!state.filters.dateFrom, 'w-[135px]') + ' pr-6'}
         />
 
         {/* Date to */}
@@ -102,7 +103,8 @@ export default function FilterBar() {
           type="date"
           value={state.filters.dateTo}
           onChange={(e) => updateFilter('dateTo', e.target.value)}
-          className={filterClass(!!state.filters.dateTo, 'w-[115px]')}
+          placeholder="Đến ngày"
+          className={filterClass(!!state.filters.dateTo, 'w-[135px]') + ' pr-6'}
         />
 
         {/* Label filter */}
