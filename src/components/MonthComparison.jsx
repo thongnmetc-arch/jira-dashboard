@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Bar } from 'react-chartjs-2';
 import { useApp } from '../context/AppContext';
+import { useI18n } from '../i18n';
 import { countWorkingDays } from '../utils/dateUtils';
 
 const MONTH_NAMES = [
@@ -19,13 +20,13 @@ function monthLabel(key) {
 }
 
 export default function MonthComparison({ tasks }) {
+  const { t } = useI18n();
   const { state } = useApp();
 
   const monthData = useMemo(() => {
     const monthMap = {};
 
     tasks.forEach(t => {
-      if (!t.status || (t.status.toLowerCase() !== 'resolved' && t.status.toLowerCase() !== 'closed')) return;
       const d = t.resolved || t.created;
       if (!d) return;
       const key = formatMonthKey(d.getFullYear(), d.getMonth() + 1);
@@ -74,7 +75,7 @@ export default function MonthComparison({ tasks }) {
     labels: monthData.map(d => d.label),
     datasets: [
       {
-        label: 'Tổng giờ',
+        label: t('stats.totalHours'),
         data: monthData.map(d => Math.round(d.totalEstHr * 10) / 10),
         backgroundColor: monthData.map(d => {
           if (d.totalEstHr >= maxHours) return 'rgba(34,197,94,0.75)';
@@ -107,7 +108,7 @@ export default function MonthComparison({ tasks }) {
       x: { grid: { display: false }, ticks: { font: { size: 10 } } },
       y: {
         beginAtZero: true,
-        title: { display: true, text: 'Giờ', font: { size: 11 } },
+        title: { display: true, text: t('common.hours'), font: { size: 11 } },
         ticks: { font: { size: 10 }, callback: (v) => v + 'h' },
       },
     },
@@ -121,10 +122,10 @@ export default function MonthComparison({ tasks }) {
         className="card mb-6"
       >
         <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3 pb-2 border-b border-[var(--border-primary)]">
-          So sánh các tháng
+          {t('tabs.compare')}
         </h3>
         <p className="py-5 text-center text-[var(--text-tertiary)] text-sm">
-          Chưa có dữ liệu để so sánh theo tháng.
+          {t('dashboard.noData')}
         </p>
       </motion.div>
     );
@@ -138,7 +139,7 @@ export default function MonthComparison({ tasks }) {
       className="card mb-6"
     >
       <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3 pb-2 border-b border-[var(--border-primary)]">
-        So sánh các tháng
+        {t('tabs.compare')}
       </h3>
 
       {/* Bar chart */}
@@ -152,25 +153,25 @@ export default function MonthComparison({ tasks }) {
           <thead>
             <tr className="bg-[var(--bg-secondary)]">
               <th className="px-3 py-2 text-left text-[11px] uppercase tracking-wider font-semibold text-[var(--text-secondary)] border-b border-[var(--border-primary)]">
-                Tháng
+                {t('sidebar.monthCompare')}
               </th>
               <th className="px-3 py-2 text-center text-[11px] uppercase tracking-wider font-semibold text-[var(--text-secondary)] border-b border-[var(--border-primary)]">
-                Ngày công
+                {t('stats.overview')}
               </th>
               <th className="px-3 py-2 text-center text-[11px] uppercase tracking-wider font-semibold text-[var(--text-secondary)] border-b border-[var(--border-primary)]">
-                Tổng giờ
+                {t('stats.totalHours')}
               </th>
               <th className="px-3 py-2 text-center text-[11px] uppercase tracking-wider font-semibold text-[var(--text-secondary)] border-b border-[var(--border-primary)]">
-                Effort
+                {t('stats.effort')}
               </th>
               <th className="px-3 py-2 text-center text-[11px] uppercase tracking-wider font-semibold text-[var(--text-secondary)] border-b border-[var(--border-primary)]">
-                Số task
+                {t('stats.totalTasks')}
               </th>
               <th className="px-3 py-2 text-center text-[11px] uppercase tracking-wider font-semibold text-[var(--text-secondary)] border-b border-[var(--border-primary)]">
-                OT
+                {t('ot.otHours')}
               </th>
               <th className="px-3 py-2 text-center text-[11px] uppercase tracking-wider font-semibold text-[var(--text-secondary)] border-b border-[var(--border-primary)]">
-                Nghỉ
+                {t('ot.leaveHours')}
               </th>
             </tr>
           </thead>
@@ -224,8 +225,8 @@ export default function MonthComparison({ tasks }) {
       </div>
 
       <p className="mt-3 text-[11px] text-[var(--text-tertiary)]">
-        <span className="text-[var(--success)] font-semibold">● Xanh</span>: cao nhất{' '}
-        <span className="text-[var(--danger)] font-semibold">● Đỏ</span>: thấp nhất
+        <span className="text-[var(--success)] font-semibold">●</span> {t('stats.above')}{' '}
+        <span className="text-[var(--danger)] font-semibold">●</span> {t('stats.below')}
       </p>
     </motion.div>
   );

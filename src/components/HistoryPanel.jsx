@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { History, X, Save, Eye, Trash2, CheckSquare, Square } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useI18n } from '../i18n';
 import {
   saveSnapshot,
   loadSnapshot,
@@ -22,6 +23,7 @@ import CompareView from './CompareView';
  * Mirrors the OTPanel.jsx / LabelManager.jsx drawer pattern exactly.
  */
 export default function HistoryPanel() {
+  const { t } = useI18n();
   const { state, dispatch } = useApp();
   const { historyPanelOpen, allTasks, fileName, dataSource } = state;
 
@@ -40,8 +42,8 @@ export default function HistoryPanel() {
   const currentTotalHours = allTasks.reduce((s, t) => s + (t.timeSpentHr || 0), 0);
   const periodText =
     allTasks.length > 0
-      ? `${allTasks.length} công việc · ${currentTotalHours.toFixed(1)}h`
-      : 'Chưa có dữ liệu';
+      ? `${allTasks.length} ${t('common.tasks')} · ${currentTotalHours.toFixed(1)}h`
+      : t('dashboard.noData');
   const storageAvailable = isStorageAvailable();
   const isWarning = storageUsage.totalKB >= STORAGE_WARNING_THRESHOLD;
   const storagePercent = Math.min(100, Math.round((storageUsage.totalKB / (5 * 1024)) * 100));
@@ -54,9 +56,9 @@ export default function HistoryPanel() {
       setStorageUsage(getStorageUsage());
       setStorageError(null);
     } catch (err) {
-      setStorageError('Không thể truy cập bộ nhớ localStorage.');
+      setStorageError(t('common.error'));
     }
-  }, []);
+  }, [t]);
 
   // Reload list when panel opens
   useEffect(() => {
@@ -96,18 +98,18 @@ export default function HistoryPanel() {
     const name = snapshotName.trim();
     if (!name) return;
     if (allTasks.length === 0) {
-      setSaveStatus({ type: 'error', msg: 'Không có dữ liệu để lưu.' });
+      setSaveStatus({ type: 'error', msg: t('dashboard.noData') });
       return;
     }
 
     const result = saveSnapshot(state, name);
     if (result.success) {
-      setSaveStatus({ type: 'success', msg: `Đã lưu "${name}"` });
+      setSaveStatus({ type: 'success', msg: t('history.save') + ' "' + name + '"' });
       setSnapshotName('');
       refreshList();
       setTimeout(() => setSaveStatus(null), 3000); // Auto-clear after 3s
     } else {
-      setSaveStatus({ type: 'error', msg: result.error || 'Lưu thất bại.' });
+      setSaveStatus({ type: 'error', msg: result.error || t('common.error') });
       setTimeout(() => setSaveStatus(null), 5000); // Auto-clear after 5s
     }
   };
@@ -116,7 +118,7 @@ export default function HistoryPanel() {
     if (!restoreTarget) return;
     const snapshot = loadSnapshot(restoreTarget.id);
     if (!snapshot) {
-      setSaveStatus({ type: 'error', msg: 'Không thể đọc bản lưu. Dữ liệu có thể bị hỏng.' });
+      setSaveStatus({ type: 'error', msg: t('common.error') });
       setRestoreTarget(null);
       return;
     }
@@ -188,7 +190,7 @@ export default function HistoryPanel() {
               <div className="flex items-center gap-2">
                 <History className="w-4 h-4 text-[var(--accent)]" />
                 <h2 className="text-sm font-semibold text-[var(--text-primary)]">
-                  Lịch sử
+                  {t('history.title')}
                 </h2>
               </div>
               <button
@@ -205,13 +207,13 @@ export default function HistoryPanel() {
               {/* ─── Section A: Save ─── */}
               <div>
                 <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
-                  Lưu phiên hiện tại
+                  {t('history.save')}
                 </h3>
 
                 {/* Current session summary */}
                 <div className="mb-3 px-3 py-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)]">
                   <div className="text-xs text-[var(--text-primary)] font-medium truncate">
-                    {fileName || 'Chưa có tên file'}
+                    {fileName || t('common.file')}
                   </div>
                   <div className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
                     {periodText}
@@ -224,7 +226,7 @@ export default function HistoryPanel() {
                   value={snapshotName}
                   onChange={(e) => setSnapshotName(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
-                  placeholder="VD: Sprint 25, 2026-06-28"
+                  placeholder={t('history.name')}
                   className="input-like w-full text-xs py-1.5 px-2.5 mb-2"
                   disabled={!storageAvailable}
                 />
@@ -234,16 +236,9 @@ export default function HistoryPanel() {
                   onClick={handleSave}
                   disabled={!snapshotName.trim() || allTasks.length === 0 || !storageAvailable}
                   className="w-full flex items-center justify-center gap-1.5 bg-[var(--accent)] hover:opacity-90 text-white px-4 py-2 rounded-lg text-xs font-medium transition-opacity disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
-                  title={
-                    allTasks.length === 0
-                      ? 'Không có dữ liệu để lưu'
-                      : !snapshotName.trim()
-                        ? 'Nhập tên bản lưu'
-                        : undefined
-                  }
                 >
                   <Save className="w-3.5 h-3.5" />
-                  Lưu
+                  {t('history.save')}
                 </button>
 
                 {/* Save status feedback */}
@@ -272,7 +267,7 @@ export default function HistoryPanel() {
                   <div className="mt-3">
                     <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)] mb-1">
                       <span>
-                        Đã dùng: {storageUsage.totalKB} KB / 5 MB ({storageSnapshotsText(storageUsage.snapshotsCount)})
+                        {t('history.storage')}: {storageUsage.totalKB} KB / 5 MB ({storageSnapshotsText(storageUsage.snapshotsCount, t)})
                       </span>
                       <span>{storagePercent}%</span>
                     </div>
@@ -294,7 +289,7 @@ export default function HistoryPanel() {
                   <div className="mt-2 flex items-start gap-1.5 text-xs px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400">
                     <span className="text-sm leading-none mt-0.5">⚠</span>
                     <span>
-                      Bộ nhớ đã dùng {(storageUsage.totalKB / 1024).toFixed(1)} MB / 5 MB. Nên xóa bản lưu cũ.
+                      {t('history.storage')} {(storageUsage.totalKB / 1024).toFixed(1)} MB / 5 MB.
                     </span>
                   </div>
                 )}
@@ -303,7 +298,7 @@ export default function HistoryPanel() {
                 {!storageAvailable && (
                   <div className="mt-2 flex items-start gap-1.5 text-xs px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400">
                     <span className="text-sm leading-none mt-0.5">✕</span>
-                    <span>localStorage không khả dụng. Không thể lưu bản lưu mới.</span>
+                    <span>{t('common.error')}</span>
                   </div>
                 )}
               </div>
@@ -311,12 +306,12 @@ export default function HistoryPanel() {
               {/* ─── Section B: List ─── */}
               <div>
                 <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
-                  Danh sách đã lưu ({snapshots.length})
+                  {t('history.title')} ({snapshots.length})
                 </h3>
 
                 {snapshots.length === 0 ? (
                   <p className="text-xs text-[var(--text-tertiary)] py-4 text-center">
-                    Chưa có bản lưu nào. Hãy nhập tên và nhấn "Lưu" ở trên.
+                    {t('history.noSnapshots')}
                   </p>
                 ) : (
                   <div className="space-y-1.5">
@@ -339,7 +334,7 @@ export default function HistoryPanel() {
                           <button
                             onClick={() => handleToggleCompare(s.id)}
                             className="flex-shrink-0 text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors cursor-pointer"
-                            title="Chọn để so sánh"
+                            title={t('history.compare')}
                           >
                             {isSelected ? (
                               <CheckSquare className="w-3.5 h-3.5 text-[var(--accent)]" />
@@ -356,7 +351,7 @@ export default function HistoryPanel() {
                             <div className="text-[10px] text-[var(--text-tertiary)] flex items-center gap-1.5 flex-wrap">
                               <span>{formatSavedAt(s.savedAt)}</span>
                               <span>·</span>
-                              <span>{s.taskCount} tasks</span>
+                              <span>{s.taskCount} {t('common.tasks')}</span>
                               {totalHrs && (
                                 <>
                                   <span>·</span>
@@ -376,14 +371,14 @@ export default function HistoryPanel() {
                           <button
                             onClick={() => setRestoreTarget({ id: s.id, name: displayName })}
                             className="p-1 rounded text-[var(--text-tertiary)] hover:text-[var(--accent)] hover:bg-[var(--bg-tertiary)] transition-all cursor-pointer"
-                            title="Xem / Khôi phục"
+                            title={t('history.restore')}
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => setDeleteTarget(s.id)}
                             className="p-1 rounded text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:bg-red-50 dark:hover:bg-red-900/20 transition-all cursor-pointer"
-                            title="Xóa"
+                            title={t('history.delete')}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -420,24 +415,23 @@ export default function HistoryPanel() {
                   onClick={(e) => e.stopPropagation()}
                 >
                   <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-                    Khôi phục bản lưu
+                    {t('history.restore')}
                   </h3>
                   <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                    Khôi phục bản lưu <strong>"{restoreTarget.name}"</strong> sẽ thay thế dữ liệu hiện tại.
-                    Tiếp tục?
+                    {t('history.restore')} <strong>"{restoreTarget.name}"</strong>?
                   </p>
                   <div className="flex items-center justify-end gap-2 pt-1">
                     <button
                       onClick={() => setRestoreTarget(null)}
                       className="px-4 py-1.5 text-xs font-medium bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-md transition-colors cursor-pointer"
                     >
-                      Hủy
+                      {t('common.cancel')}
                     </button>
                     <button
                       onClick={handleRestore}
                       className="px-4 py-1.5 text-xs font-medium bg-[var(--accent)] hover:opacity-90 text-white rounded-md transition-opacity cursor-pointer"
                     >
-                      Khôi phục
+                      {t('common.restore')}
                     </button>
                   </div>
                 </div>
@@ -459,23 +453,23 @@ export default function HistoryPanel() {
                   onClick={(e) => e.stopPropagation()}
                 >
                   <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-                    Xóa bản lưu
+                    {t('history.delete')}
                   </h3>
                   <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                    Xóa bản lưu này? Hành động này không thể hoàn tác.
+                    {t('common.deleteConfirm')}?
                   </p>
                   <div className="flex items-center justify-end gap-2 pt-1">
                     <button
                       onClick={() => setDeleteTarget(null)}
                       className="px-4 py-1.5 text-xs font-medium bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-md transition-colors cursor-pointer"
                     >
-                      Hủy
+                      {t('common.cancel')}
                     </button>
                     <button
                       onClick={handleDelete}
                       className="px-4 py-1.5 text-xs font-medium bg-[var(--danger)] hover:opacity-90 text-white rounded-md transition-opacity cursor-pointer"
                     >
-                      Xóa
+                      {t('common.delete')}
                     </button>
                   </div>
                 </div>
@@ -489,8 +483,7 @@ export default function HistoryPanel() {
 }
 
 /** Helper: build a human-friendly snapshots count string */
-function storageSnapshotsText(count) {
-  if (count === 0) return 'chưa có bản lưu';
-  if (count === 1) return '1 bản lưu';
-  return `${count} bản lưu`;
+function storageSnapshotsText(count, t) {
+  if (count === 0) return '0 ' + t('history.title');
+  return count + ' ' + t('history.title');
 }

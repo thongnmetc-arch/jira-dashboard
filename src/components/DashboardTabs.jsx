@@ -1,14 +1,20 @@
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Table, BarChart3, CalendarRange } from 'lucide-react';
+import { LayoutDashboard, Table, BarChart3, CalendarRange, PieChart, Clock, Tag, History } from 'lucide-react';
+import { useI18n } from '../i18n';
 
 const tabs = [
-  { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
-  { id: 'data', label: 'Dữ liệu', icon: Table },
-  { id: 'gantt', label: 'Gantt', icon: CalendarRange },
-  { id: 'compare', label: 'So sánh', icon: BarChart3 },
+  { id: 'overview', icon: LayoutDashboard },
+  { id: 'charts', icon: PieChart },
+  { id: 'data', icon: Table },
+  { id: 'gantt', icon: CalendarRange },
+  { id: 'compare', icon: BarChart3 },
+  { id: 'ot', icon: Clock },
+  { id: 'labels', icon: Tag },
+  { id: 'history', icon: History },
 ];
 
 export default function DashboardTabs({ activeTab, onTabChange }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center gap-1 mb-6 bg-[var(--bg-secondary)] p-1 rounded-lg border border-[var(--border-primary)] w-fit">
       {tabs.map((tab) => {
@@ -27,7 +33,7 @@ export default function DashboardTabs({ activeTab, onTabChange }) {
             }`}
           >
             <Icon className="w-3.5 h-3.5" />
-            <span>{tab.label}</span>
+            <span>{t('tabs.' + tab.id)}</span>
           </motion.button>
         );
       })}

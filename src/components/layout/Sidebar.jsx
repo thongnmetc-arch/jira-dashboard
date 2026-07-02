@@ -1,47 +1,57 @@
 import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  FileText,
   Tag,
   History,
   Bookmark,
   Calendar,
   Clock,
+  Table,
+  BarChart3,
+  CalendarRange,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useI18n } from '../../i18n';
 
-function SubItem({ icon: Icon, label, onClick }) {
+function SubItem({ icon: Icon, label, onClick, isActive }) {
   return (
     <motion.button
       onClick={onClick}
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
-      className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]"
+      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+        isActive
+          ? 'bg-[var(--accent-light)] text-[var(--accent)]'
+          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]'
+      }`}
     >
-      <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+      <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${isActive ? 'text-[var(--accent)]' : ''}`} />
       <span className="truncate">{label}</span>
     </motion.button>
   );
 }
 
 export default function Sidebar() {
+  const { t } = useI18n();
   const { state, dispatch } = useApp();
-  const { sidebarCollapsed, activeSection, showWeeklyPlanner } = state;
+  const { sidebarCollapsed, activeSection, dashboardTab } = state;
   const [dashboardExpanded, setDashboardExpanded] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const isDashboardActive = !showWeeklyPlanner && activeSection === 'dashboard';
+  const isDashboardActive = activeSection === 'dashboard' && location.pathname !== '/weekly-planner';
+  const isWeeklyPlanner = location.pathname === '/weekly-planner';
 
   const toggleCollapse = () => {
     dispatch({ type: 'SET_SIDEBAR_COLLAPSED', payload: !sidebarCollapsed });
   };
 
-  const openOT = () => dispatch({ type: 'SET_OT_PANEL_OPEN', payload: true });
-  const openLabels = () => dispatch({ type: 'SET_LABEL_PANEL_OPEN', payload: true });
-  const openHistory = () => dispatch({ type: 'SET_HISTORY_PANEL_OPEN', payload: true });
+  // Tab navigation for OT, Labels, History — now inline tabs, not drawers
 
   return (
     <aside
@@ -55,8 +65,8 @@ export default function Sidebar() {
       }`}>
         {!sidebarCollapsed && (
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 rounded-md bg-[var(--accent)] flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs font-bold">J</span>
+            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+              <BarChart3 className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
             </div>
             <div className="min-w-0">
               <div className="text-sm font-semibold text-[var(--text-primary)] truncate leading-tight">
@@ -67,8 +77,8 @@ export default function Sidebar() {
           </div>
         )}
         {sidebarCollapsed && (
-          <div className="w-6 h-6 rounded-md bg-[var(--accent)] flex items-center justify-center">
-            <span className="text-white text-xs font-bold">J</span>
+          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 flex items-center justify-center">
+            <BarChart3 className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
           </div>
         )}
       </div>
@@ -78,9 +88,7 @@ export default function Sidebar() {
         {/* Dashboard parent */}
         <motion.button
           onClick={() => {
-            dispatch({ type: 'SET_ACTIVE_SECTION', payload: 'dashboard' });
-            dispatch({ type: 'SET_DASHBOARD_TAB', payload: 'overview' });
-            dispatch({ type: 'SET_SHOW_WEEKLY_PLANNER', payload: false });
+            navigate('/dashboard');
             setDashboardExpanded(!dashboardExpanded);
           }}
           whileHover={{ scale: 1.02 }}
@@ -108,7 +116,7 @@ export default function Sidebar() {
           )}
         </motion.button>
 
-        {/* Sub-items: OT, Labels, History */}
+        {/* Sub-items: tabs + tools */}
         <AnimatePresence>
           {dashboardExpanded && isDashboardActive && !sidebarCollapsed && (
             <motion.div
@@ -119,66 +127,36 @@ export default function Sidebar() {
               transition={{ duration: 0.2, ease: 'easeInOut' }}
               className="overflow-hidden ml-4 space-y-0.5"
             >
-              <SubItem icon={Clock} label="OT & Nghỉ phép" onClick={openOT} />
-              <SubItem icon={Tag} label="Quản lý nhãn" onClick={openLabels} />
-              <SubItem icon={History} label="Lịch sử" onClick={openHistory} />
+              {/* Dashboard tab navigation */}
+              <SubItem icon={LayoutDashboard} label={t('tabs.overview')} isActive={dashboardTab === 'overview'} onClick={() => { navigate('/dashboard/overview'); dispatch({ type: 'SET_DASHBOARD_TAB', payload: 'overview' }); }} />
+              <SubItem icon={BarChart3} label={t('tabs.charts')} isActive={dashboardTab === 'charts'} onClick={() => { navigate('/dashboard/charts'); dispatch({ type: 'SET_DASHBOARD_TAB', payload: 'charts' }); }} />
+              <SubItem icon={Table} label={t('tabs.data')} isActive={dashboardTab === 'data'} onClick={() => { navigate('/dashboard/data'); dispatch({ type: 'SET_DASHBOARD_TAB', payload: 'data' }); }} />
+              <SubItem icon={CalendarRange} label={t('tabs.gantt')} isActive={dashboardTab === 'gantt'} onClick={() => { navigate('/dashboard/gantt'); dispatch({ type: 'SET_DASHBOARD_TAB', payload: 'gantt' }); }} />
+              <SubItem icon={BarChart3} label={t('tabs.compare')} isActive={dashboardTab === 'compare'} onClick={() => { navigate('/dashboard/compare'); dispatch({ type: 'SET_DASHBOARD_TAB', payload: 'compare' }); }} />
+              <SubItem icon={Clock} label={t('tabs.ot')} isActive={dashboardTab === 'ot'} onClick={() => { navigate('/dashboard/ot'); dispatch({ type: 'SET_DASHBOARD_TAB', payload: 'ot' }); }} />
+              <SubItem icon={Tag} label={t('tabs.labels')} isActive={dashboardTab === 'labels'} onClick={() => { navigate('/dashboard/labels'); dispatch({ type: 'SET_DASHBOARD_TAB', payload: 'labels' }); }} />
+              <SubItem icon={History} label={t('tabs.history')} isActive={dashboardTab === 'history'} onClick={() => { navigate('/dashboard/history'); dispatch({ type: 'SET_DASHBOARD_TAB', payload: 'history' }); }} />
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Lên lịch tuần */}
         <motion.button
-          onClick={() => {
-            dispatch({ type: 'SET_ACTIVE_SECTION', payload: 'weekly-planner' });
-            dispatch({ type: 'SET_SHOW_WEEKLY_PLANNER', payload: true });
-          }}
+          onClick={() => navigate('/weekly-planner')}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
-            activeSection === 'weekly-planner' && showWeeklyPlanner
+            isWeeklyPlanner
               ? 'bg-[var(--accent-light)] text-[var(--accent)]'
               : 'text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]'
           } ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
-          title={sidebarCollapsed ? 'Lên lịch tuần' : undefined}
+          title={sidebarCollapsed ? t('sidebar.weeklyPlanner') : undefined}
         >
-          <Calendar className={`w-4 h-4 flex-shrink-0 ${activeSection === 'weekly-planner' && showWeeklyPlanner ? 'text-[var(--accent)]' : ''}`} />
+          <Calendar className={`w-4 h-4 flex-shrink-0 ${isWeeklyPlanner ? 'text-[var(--accent)]' : ''}`} />
           {!sidebarCollapsed && (
-            <span className="truncate">Lên lịch tuần</span>
+            <span className="truncate">{t('sidebar.weeklyPlanner')}</span>
           )}
         </motion.button>
-
-        {/* Import HTML */}
-        <button
-          onClick={() => {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.html,.htm';
-            input.onchange = async (e) => {
-              const file = e.target.files[0];
-              if (!file) return;
-              window.dispatchEvent(new CustomEvent('html-import-start'));
-              try {
-                const text = await file.text();
-                const { parseJiraHtml } = await import('../../utils/htmlParser');
-                const tasks = parseJiraHtml(text);
-                if (tasks.length === 0) throw new Error('Không tìm thấy dữ liệu.');
-                window.dispatchEvent(new CustomEvent('html-import-data', { detail: { tasks, fileName: file.name } }));
-              } catch(err) {
-                window.dispatchEvent(new CustomEvent('html-import-error', { detail: { message: err.message } }));
-              }
-            };
-            input.click();
-          }}
-          className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
-            sidebarCollapsed ? 'justify-center px-0' : ''
-          } text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]`}
-          title={sidebarCollapsed ? 'Import HTML' : undefined}
-        >
-          <FileText className="w-4 h-4 flex-shrink-0" />
-          {!sidebarCollapsed && (
-            <span className="truncate">Import HTML</span>
-          )}
-        </button>
 
         {/* Bookmarklet */}
         <button
@@ -186,11 +164,11 @@ export default function Sidebar() {
           className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
             sidebarCollapsed ? 'justify-center px-0' : ''
           } text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]`}
-          title={sidebarCollapsed ? 'Bookmarklet' : undefined}
+          title={sidebarCollapsed ? t('sidebar.bookmarklet') : undefined}
         >
           <Bookmark className="w-4 h-4 flex-shrink-0" />
           {!sidebarCollapsed && (
-            <span className="truncate">Bookmarklet</span>
+            <span className="truncate">{t('sidebar.bookmarklet')}</span>
           )}
         </button>
       </nav>
@@ -200,7 +178,7 @@ export default function Sidebar() {
         <button
           onClick={toggleCollapse}
           className="w-full flex items-center justify-center p-1.5 rounded-md text-[var(--text-tertiary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
-          title={sidebarCollapsed ? 'Mở rộng' : 'Thu gọn'}
+          title={sidebarCollapsed ? t('sidebar.expand') : t('sidebar.collapse')}
         >
           {sidebarCollapsed ? (
             <ChevronRight className="w-4 h-4" />

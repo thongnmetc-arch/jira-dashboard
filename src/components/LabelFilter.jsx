@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Filter, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useI18n } from '../i18n';
 import LabelBadge from './LabelBadge';
 
 /**
@@ -10,6 +11,7 @@ import LabelBadge from './LabelBadge';
  * opens a popover with checkable label list.
  */
 export default function LabelFilter() {
+  const { t } = useI18n();
   const { state, dispatch } = useApp();
   const { labelDefs, filters } = state;
   const [open, setOpen] = useState(false);
@@ -67,7 +69,7 @@ export default function LabelFilter() {
         }`}
       >
         <Filter className="w-3 h-3" />
-        <span>Nhãn</span>
+        <span>{t('table.labels')}</span>
         {selectedLabels.length > 0 && (
           <span className="ml-0.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-[var(--accent)] text-white text-[10px] font-bold leading-none">
             {selectedLabels.length}
@@ -89,7 +91,7 @@ export default function LabelFilter() {
             {/* Header */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border-primary)]">
               <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
-                Lọc theo nhãn
+                {t('filter.reset')}
               </span>
               <button
                 onClick={() => setOpen(false)}
@@ -103,7 +105,7 @@ export default function LabelFilter() {
             <div className="max-h-52 overflow-y-auto p-2 space-y-0.5">
               {labelIds.length === 0 ? (
                 <p className="text-xs text-[var(--text-tertiary)] text-center py-3">
-                  Chưa có nhãn
+                  {t('labels.noLabels')}
                 </p>
               ) : (
                 labelIds.map((id) => {
@@ -140,7 +142,7 @@ export default function LabelFilter() {
                   onClick={handleClear}
                   className="text-xs text-[var(--text-tertiary)] hover:text-[var(--danger)] transition-colors cursor-pointer"
                 >
-                  Xóa bộ lọc
+                  {t('filter.reset')}
                 </button>
               </div>
             )}

@@ -9,16 +9,18 @@ import {
   Legend,
 } from 'chart.js';
 import { useMemo } from 'react';
+import { useI18n } from '../../i18n';
 import { CHART_PALETTE } from '../../utils/exportUtils';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 export default function AssigneeBarChart({ tasks }) {
+  const { t } = useI18n();
   const chartData = useMemo(() => {
     const groups = {};
-    tasks.forEach(t => {
-      const a = t.assignee || 'Không có';
-      groups[a] = (groups[a] || 0) + t.timeSpentHr;
+    tasks.forEach(task => {
+      const a = task.assignee || t('common.tasks');
+      groups[a] = (groups[a] || 0) + task.timeSpentHr;
     });
 
     const sorted = Object.entries(groups).sort((a, b) => b[1] - a[1]);
@@ -28,9 +30,9 @@ export default function AssigneeBarChart({ tasks }) {
 
     return {
       labels,
-      datasets: [{ label: 'Giờ', data, backgroundColor: colors, borderRadius: 4 }],
+      datasets: [{ label: t('common.hours'), data, backgroundColor: colors, borderRadius: 4 }],
     };
-  }, [tasks]);
+  }, [tasks, t]);
 
   const options = {
     indexAxis: 'y',
@@ -43,7 +45,7 @@ export default function AssigneeBarChart({ tasks }) {
     scales: {
       x: {
         beginAtZero: true,
-        title: { display: true, text: 'Giờ', font: { size: 11 } },
+        title: { display: true, text: t('common.hours'), font: { size: 11 } },
         ticks: { font: { size: 10 }, callback: (v) => v + 'h' },
       },
       y: { grid: { display: false }, ticks: { font: { size: 10 } } },
@@ -53,7 +55,7 @@ export default function AssigneeBarChart({ tasks }) {
   return (
     <div className="card chart-card">
       <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
-        Tổng giờ theo người thực hiện
+        {t('filter.assignee')}
       </h3>
       <div className="relative h-[350px]">
         <Bar data={chartData} options={options} />

@@ -9,17 +9,19 @@ import {
   Legend,
 } from 'chart.js';
 import { useMemo } from 'react';
+import { useI18n } from '../../i18n';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 export default function SprintBarChart({ tasks }) {
+  const { t } = useI18n();
   const chartData = useMemo(() => {
     const groups = {};
-    tasks.forEach(t => {
-      const s = t.primarySprint;
+    tasks.forEach(task => {
+      const s = task.primarySprint;
       if (!groups[s]) groups[s] = { spent: 0, est: 0 };
-      groups[s].spent += t.timeSpentHr;
-      groups[s].est += t.estimateHr;
+      groups[s].spent += task.timeSpentHr;
+      groups[s].est += task.estimateHr;
     });
 
     const sorted = Object.entries(groups).sort((a, b) => {
@@ -39,7 +41,7 @@ export default function SprintBarChart({ tasks }) {
       labels,
       datasets: [
         {
-          label: 'Giờ đã log',
+          label: t('table.hoursLogged'),
           data: spentData,
           backgroundColor: 'rgba(91,106,240,.75)',
           borderColor: '#5b6af0',
@@ -47,7 +49,7 @@ export default function SprintBarChart({ tasks }) {
           borderRadius: 4,
         },
         {
-          label: 'Giờ ước tính',
+          label: t('table.hoursEstimate'),
           data: estData,
           backgroundColor: 'rgba(34,197,94,.65)',
           borderColor: '#22c55e',
@@ -56,7 +58,7 @@ export default function SprintBarChart({ tasks }) {
         },
       ],
     };
-  }, [tasks]);
+  }, [tasks, t]);
 
   const options = {
     responsive: true,
@@ -73,7 +75,7 @@ export default function SprintBarChart({ tasks }) {
       x: { grid: { display: false }, ticks: { font: { size: 10 } } },
       y: {
         beginAtZero: true,
-        title: { display: true, text: 'Giờ', font: { size: 11 } },
+        title: { display: true, text: t('common.hours'), font: { size: 11 } },
         ticks: { font: { size: 10 }, callback: (v) => v + 'h' },
       },
     },
@@ -82,7 +84,7 @@ export default function SprintBarChart({ tasks }) {
   return (
     <div className="card chart-card">
       <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
-        Tổng giờ theo Sprint
+        {t('filter.sprint')}
       </h3>
       <div className="relative h-[300px]">
         <Bar data={chartData} options={options} />

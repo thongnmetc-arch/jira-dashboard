@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { User, Lock, Eye, EyeOff, AlertCircle, AlertTriangle, Sun, Moon } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, AlertCircle, AlertTriangle, Sun, Moon, BarChart3, Zap } from 'lucide-react';
+import { useI18n } from '../i18n';
 import {
   hashPassword,
   isPasswordSet,
@@ -19,20 +20,24 @@ import {
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 30;
 
+const REMEMBER_KEY = 'jira-dash-remember-me';
+
 /* ───── static data ───── */
 
-const FEATURES = [
-  { icon: '\u{1F4CA}', text: 'Phân tích dữ liệu JIRA với 5+ biểu đồ trực quan' },
-  { icon: '\u{1F3F7}\uFE0F', text: 'Quản lý nhãn thông minh, tự động phân loại công việc' },
-  { icon: '\u{1F4BE}', text: 'Lưu & so sánh lịch sử phân tích theo thời gian' },
-  { icon: '\u{1F5A5}\uFE0F', text: 'Ứng dụng desktop — Không cần trình duyệt' },
-];
+function getFeatures(t) {
+  return [
+    { icon: '\u{1F4CA}', text: t('login.feature1') },
+    { icon: '\u{1F3F7}\uFE0F', text: t('login.feature2') },
+    { icon: '\u{1F4BE}', text: t('login.feature3') },
+    { icon: '\u{1F5A5}\uFE0F', text: t('login.feature4') },
+  ];
+}
 
 const FEATURE_CIRCLE_COLORS = [
-  'bg-white/80 dark:bg-indigo-500/20 border border-indigo-300/50 dark:border-transparent hover:scale-110 hover:shadow-lg transition-all duration-200',
-  'bg-white/80 dark:bg-purple-500/20 border border-purple-300/50 dark:border-transparent hover:scale-110 hover:shadow-lg transition-all duration-200',
-  'bg-white/80 dark:bg-pink-500/20 border border-pink-300/50 dark:border-transparent hover:scale-110 hover:shadow-lg transition-all duration-200',
-  'bg-white/80 dark:bg-blue-500/20 border border-blue-300/50 dark:border-transparent hover:scale-110 hover:shadow-lg transition-all duration-200',
+  'bg-white/20 backdrop-blur-sm border border-white/20 hover:bg-white/30 hover:scale-110 hover:shadow-lg transition-all duration-200',
+  'bg-white/15 backdrop-blur-sm border border-white/20 hover:bg-white/25 hover:scale-110 hover:shadow-lg transition-all duration-200',
+  'bg-white/20 backdrop-blur-sm border border-white/20 hover:bg-white/30 hover:scale-110 hover:shadow-lg transition-all duration-200',
+  'bg-white/15 backdrop-blur-sm border border-white/20 hover:bg-white/25 hover:scale-110 hover:shadow-lg transition-all duration-200',
 ];
 
 /* ───── Framer Motion variants ───── */
@@ -67,9 +72,9 @@ const shakeVariants = {
 /* ───── floating blob configs ───── */
 
 const BLOBS = [
-  { size: 'w-80 h-80', pos: '-top-20 -left-20', color: 'bg-indigo-200/5 dark:bg-indigo-400/20', dur: 10, del: 0 },
-  { size: 'w-96 h-96', pos: '-bottom-32 -right-10', color: 'bg-purple-200/5 dark:bg-purple-400/15', dur: 8, del: 2 },
-  { size: 'w-96 h-96', pos: 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2', color: 'bg-pink-200/5 dark:bg-pink-400/10', dur: 12, del: 4 },
+  { size: 'w-80 h-80', pos: '-top-20 -left-20', color: 'bg-white/10 dark:bg-indigo-400/20', dur: 10, del: 0 },
+  { size: 'w-96 h-96', pos: '-bottom-32 -right-10', color: 'bg-white/5 dark:bg-purple-400/15', dur: 8, del: 2 },
+  { size: 'w-96 h-96', pos: 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2', color: 'bg-white/8 dark:bg-pink-400/10', dur: 12, del: 4 },
 ];
 
 const DECORATIVE_DOTS = [
@@ -101,6 +106,8 @@ const DECORATIVE_DOTS = [
  *   - All UI text is Vietnamese.
  */
 export default function LoginScreen({ onUnlock }) {
+  const { t, lang, toggleLanguage } = useI18n();
+  const FEATURES = getFeatures(t);
   /* ───── state ───── */
   const [mode, setMode] = useState('loading'); // 'loading' | 'login' | 'setup' | 'lockout'
   const [username, setUsername] = useState('');
@@ -108,7 +115,9 @@ export default function LoginScreen({ onUnlock }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(() => {
+    return localStorage.getItem(REMEMBER_KEY) === 'true';
+  });
   const [error, setError] = useState('');
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutRemaining, setLockoutRemaining] = useState(0);
@@ -154,9 +163,9 @@ export default function LoginScreen({ onUnlock }) {
       } else {
         setMode('login');
         setFailedAttempts(getFailedAttempts());
-        // Pre-fill the stored username for convenience
-        const storedUser = getStoredUsername();
-        if (storedUser) setUsername(storedUser);
+        // Restore remember-me state
+        const savedRemember = localStorage.getItem(REMEMBER_KEY) === 'true';
+        setRemember(savedRemember);
       }
     }
 
@@ -205,7 +214,7 @@ export default function LoginScreen({ onUnlock }) {
     if (isLockedOut()) return;
 
     if (!username.trim()) {
-      setError('Vui lòng nhập tài khoản');
+      setError(t('login.errorRequired'));
       return;
     }
 
@@ -214,6 +223,12 @@ export default function LoginScreen({ onUnlock }) {
       if (valid) {
         resetFailedAttempts();
         onUnlock();
+
+        if (remember) {
+          localStorage.setItem(REMEMBER_KEY, 'true');
+        } else {
+          localStorage.removeItem(REMEMBER_KEY);
+        }
       } else {
         const attempts = incrementFailedAttempts();
         setFailedAttempts(attempts);
@@ -225,14 +240,14 @@ export default function LoginScreen({ onUnlock }) {
           setLockoutRemaining(rem);
           timerRef.current = setInterval(updateLockoutTimer, 1000);
           setMode('lockout');
-          setError('Quá nhiều lần thử sai. Vui lòng thử lại sau 30 phút.');
+          setError(t('login.errorTooMany'));
         } else {
-          setError(`Sai tài khoản hoặc mật khẩu (còn ${remaining} lần)`);
+          setError(t('login.errorAttempt').replace('{n}', remaining));
         }
         setPassword('');
       }
     } catch (err) {
-      setError('Lỗi xác thực. Vui lòng thử lại.');
+      setError(t('login.errorAuth'));
     }
   }
 
@@ -242,15 +257,15 @@ export default function LoginScreen({ onUnlock }) {
     setError('');
 
     if (!username.trim()) {
-      setError('Vui lòng nhập tên tài khoản');
+      setError(t('login.errorRequired'));
       return;
     }
     if (password.length < 4) {
-      setError('Mật khẩu phải có ít nhất 4 ký tự');
+      setError(t('login.errorPasswordLength'));
       return;
     }
     if (password !== confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp');
+      setError(t('login.errorPasswordMatch'));
       return;
     }
 
@@ -259,7 +274,7 @@ export default function LoginScreen({ onUnlock }) {
       resetFailedAttempts();
       onUnlock();
     } catch (err) {
-      setError('Lỗi khi thiết lập. Vui lòng thử lại.');
+      setError(t('login.errorSetup'));
     }
   }
 
@@ -280,10 +295,10 @@ export default function LoginScreen({ onUnlock }) {
               <AlertTriangle className="w-6 h-6 text-red-500" />
             </div>
             <h1 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-              Tạm khóa
+              {t('login.lockoutTitle')}
             </h1>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
-              Quá nhiều lần thử sai. Vui lòng thử lại sau.
+              {t('login.lockoutMsg')}
             </p>
             <p className="text-2xl font-mono font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">
               {formatTime(lockoutRemaining)}
@@ -307,18 +322,28 @@ export default function LoginScreen({ onUnlock }) {
      TWO-COLUMN LAYOUT
      ────────────────────────────────────────────── */
   return (
-    <div className="min-h-screen w-full flex flex-col md:flex-row relative">
+    <div className="min-h-screen w-full flex flex-col md:flex-row relative bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
       {/* ══════════════════════════════════════════
           LEFT PANEL — App Introduction (60%)
           ══════════════════════════════════════════ */}
-      <button
-        onClick={() => setDarkMode((prev) => !prev)}
-        className="absolute top-4 right-4 z-10 p-2 rounded-full backdrop-blur-sm transition-colors bg-slate-200/60 text-slate-600 hover:bg-slate-300/60 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
-        aria-label={darkMode ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
-      >
-        {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-      </button>
-      <div className="relative w-full md:w-[60%] min-h-[40vh] md:min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:bg-gradient-to-br dark:from-slate-900 dark:via-indigo-950 dark:to-purple-950">
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+        <button
+          onClick={toggleLanguage}
+          className="p-2 rounded-full backdrop-blur-sm transition-colors bg-slate-200/60 text-slate-600 hover:bg-slate-300/60 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+          aria-label={t('lang.switch')}
+          title={lang === 'vi' ? 'English' : 'Tiếng Việt'}
+        >
+          {lang === 'vi' ? <svg viewBox="0 0 20 14" className="w-5 h-5"><rect width="20" height="14" fill="#DA251D"/><polygon points="10,2 11.5,6 16,6 12.5,8.5 14,12.5 10,10 6,12.5 7.5,8.5 4,6 8.5,6" fill="#FFCD01"/></svg> : <svg viewBox="0 0 20 14" className="w-5 h-5"><rect width="20" height="14" fill="#012169"/><path d="M0 0l8 5.5M20 0l-8 5.5M0 14l8-5.5M20 14l-8-5.5" stroke="white" strokeWidth="2"/><path d="M10 0v14M0 7h20" stroke="white" strokeWidth="3.5"/><path d="M10 0v14M0 7h20" stroke="#C8102E" strokeWidth="1.5"/></svg>}
+        </button>
+        <button
+          onClick={() => setDarkMode((prev) => !prev)}
+          className="p-2 rounded-full backdrop-blur-sm transition-colors bg-slate-200/60 text-slate-600 hover:bg-slate-300/60 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+          aria-label={t('common.toggleTheme')}
+        >
+          {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </button>
+      </div>
+      <div className="relative w-full md:w-[60%] min-h-[40vh] md:min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 dark:from-slate-900 dark:via-indigo-950 dark:to-purple-950">
         {/* — decorative floating blobs — */}
         {BLOBS.map((blob, i) => (
           <motion.div
@@ -342,13 +367,14 @@ export default function LoginScreen({ onUnlock }) {
             {DECORATIVE_DOTS.map((dot, i) => (
               <div
                 key={i}
-                className={`absolute ${dot.pos} ${dot.size} ${dot.opacity} bg-indigo-300/30 dark:bg-white rounded-full`}
+                className={`absolute ${dot.pos} ${dot.size} ${dot.opacity} bg-white/30 dark:bg-white rounded-full`}
               />
             ))}
           </div>
 
         {/* — centred content — */}
         <motion.div
+          key="left-panel"
           className="relative z-10 px-8 py-12 md:py-0 max-w-lg mx-auto"
           variants={containerVariants}
           initial="hidden"
@@ -356,15 +382,26 @@ export default function LoginScreen({ onUnlock }) {
         >
           {/* Logo */}
           <motion.div variants={featureItemVariants} className="mb-6">
-            <div className="w-[72px] h-[72px] bg-indigo-600 rounded-2xl flex items-center justify-center shadow-2xl">
-              <span className="text-white font-bold text-4xl">J</span>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/30 rotate-3">
+                  <BarChart3 className="w-8 h-8 text-white" strokeWidth={2.5} />
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-400 rounded-full border-2 border-white flex items-center justify-center">
+                  <Zap className="w-3 h-3 text-white" />
+                </div>
+              </div>
+              <div>
+                <h1 className="text-2xl font-extrabold text-white tracking-tight">JIRA Dash</h1>
+                <p className="text-blue-200 text-xs font-medium tracking-wide">TIME TRACKING</p>
+              </div>
             </div>
           </motion.div>
 
           {/* Title */}
           <motion.h1
             variants={titleVariants}
-            className="text-4xl font-bold text-slate-800 dark:text-white mb-3"
+            className="text-4xl font-bold text-white mb-3"
           >
             JIRA Dashboard
           </motion.h1>
@@ -372,9 +409,9 @@ export default function LoginScreen({ onUnlock }) {
           {/* Tagline */}
           <motion.p
             variants={featureItemVariants}
-            className="text-lg text-slate-600 dark:text-white/70 mb-10"
+            className="text-lg text-blue-100 mb-10"
           >
-            Theo dõi thời gian làm việc — Trực quan &amp; Hiệu quả
+            {t('login.tagline')}
           </motion.p>
 
           {/* Feature highlights */}
@@ -388,7 +425,7 @@ export default function LoginScreen({ onUnlock }) {
                 <div className={`w-8 h-8 ${FEATURE_CIRCLE_COLORS[i]} rounded-full flex items-center justify-center shrink-0`}>
                   <span className="text-sm">{feature.icon}</span>
                 </div>
-                <p className="text-slate-600 dark:text-white/80 text-sm leading-relaxed">
+                <p className="text-white/80 text-sm leading-relaxed">
                   {feature.text}
                 </p>
               </motion.div>
@@ -398,10 +435,10 @@ export default function LoginScreen({ onUnlock }) {
           {/* Version footer */}
           <motion.p
             variants={featureItemVariants}
-            className="mt-12 text-slate-400 dark:text-white/40 text-xs"
+            className="mt-12 text-white/40 text-xs"
           >
             v1.1.0 &middot; Made with{' '}
-            <span className="text-red-400/60">&hearts;</span>
+                <span className="text-red-300/80">&hearts;</span>
           </motion.p>
         </motion.div>
       </div>
@@ -416,7 +453,7 @@ export default function LoginScreen({ onUnlock }) {
           animate="visible"
           className="w-full max-w-sm"
         >
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl ring-1 ring-indigo-100 dark:ring-slate-700 p-8">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl shadow-indigo-500/10 ring-1 ring-indigo-100 dark:ring-slate-700 p-8 min-w-[360px]">
             {/* ───── LOGIN MODE ───── */}
             {mode === 'login' && (
               <>
@@ -426,11 +463,11 @@ export default function LoginScreen({ onUnlock }) {
                     <Lock className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
                   </div>
                 </div>
-                <h1 className="text-xl font-bold text-center text-slate-900 dark:text-white mb-6">
-                  Đăng nhập
+                <h1 className="text-xl font-bold text-center text-slate-900 dark:text-white mb-6 whitespace-nowrap">
+                  {t('login.title')}
                 </h1>
 
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={handleLogin} onKeyDown={(e) => e.key === 'Enter' && handleLogin(e)} className="space-y-4">
                   {/* Username */}
                   <div>
                     <div className="relative">
@@ -442,8 +479,8 @@ export default function LoginScreen({ onUnlock }) {
                         type="text"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
-                        placeholder="Tài khoản"
-                        className="w-full pr-3 input-like placeholder:text-slate-400 dark:placeholder:text-slate-500 font-mono text-slate-900 dark:text-white"
+                        placeholder={t('login.username')}
+                        className="w-full pr-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all py-2.5"
                         style={{ paddingLeft: '2.75rem' }}
                         autoComplete="username"
                       />
@@ -460,8 +497,8 @@ export default function LoginScreen({ onUnlock }) {
                         type={showPassword ? 'text' : 'password'}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Mật khẩu"
-                        className="w-full pr-10 input-like placeholder:text-slate-400 dark:placeholder:text-slate-500 font-mono text-slate-900 dark:text-white"
+                        placeholder={t('login.password')}
+                        className="w-full pr-10 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all py-2.5"
                         style={{ paddingLeft: '2.75rem' }}
                         autoComplete="current-password"
                         minLength={4}
@@ -471,7 +508,7 @@ export default function LoginScreen({ onUnlock }) {
                         onClick={() => setShowPassword((v) => !v)}
                         className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                         tabIndex={-1}
-                        aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                        aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
                       >
                         {showPassword ? (
                           <EyeOff className="w-4 h-4" />
@@ -490,8 +527,8 @@ export default function LoginScreen({ onUnlock }) {
                       onChange={(e) => setRemember(e.target.checked)}
                       className="w-4 h-4 accent-indigo-600 text-slate-900 dark:text-white"
                     />
-                    <span className="text-sm text-slate-600 dark:text-slate-400">
-                      Ghi nhớ đăng nhập
+                    <span className="text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                      {t('login.remember')}
                     </span>
                   </label>
 
@@ -515,9 +552,9 @@ export default function LoginScreen({ onUnlock }) {
                   <button
                     type="submit"
                     disabled={!username.trim() || !password}
-                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium py-2.5 px-4 rounded-lg shadow-lg shadow-indigo-500/25 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full min-w-[140px] bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium py-2.5 px-4 rounded-lg shadow-lg shadow-indigo-500/25 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Đăng nhập
+                    {t('login.loginBtn')}
                   </button>
                 </form>
 
@@ -531,9 +568,9 @@ export default function LoginScreen({ onUnlock }) {
                       setPassword('');
                       setConfirmPassword('');
                     }}
-                    className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+                    className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors whitespace-nowrap"
                   >
-                    Thiết lập mật khẩu lần đầu
+                    {t('login.setupLink')}
                   </button>
                 </div>
               </>
@@ -546,11 +583,11 @@ export default function LoginScreen({ onUnlock }) {
                 <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center mx-auto mb-4">
                   <Lock className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
                 </div>
-                <h1 className="text-xl font-bold text-center text-slate-900 dark:text-white mb-6">
-                  Thiết lập mật khẩu
+                <h1 className="text-xl font-bold text-center text-slate-900 dark:text-white mb-6 whitespace-nowrap">
+                  {t('login.setup')}
                 </h1>
 
-                <form onSubmit={handleSetup} className="space-y-4">
+                <form onSubmit={handleSetup} onKeyDown={(e) => e.key === 'Enter' && handleSetup(e)} className="space-y-4">
                   {/* Username */}
                   <div>
                     <div className="relative">
@@ -561,8 +598,8 @@ export default function LoginScreen({ onUnlock }) {
                         type="text"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
-                        placeholder="Tên tài khoản"
-                        className="w-full pr-3 input-like placeholder:text-slate-400 dark:placeholder:text-slate-500 font-mono text-slate-900 dark:text-white"
+                        placeholder={t('login.accountName')}
+                        className="w-full pr-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all py-2.5"
                         style={{ paddingLeft: '2.75rem' }}
                         autoFocus
                       />
@@ -579,8 +616,8 @@ export default function LoginScreen({ onUnlock }) {
                         type={showPassword ? 'text' : 'password'}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Mật khẩu mới"
-                        className="w-full pr-10 input-like placeholder:text-slate-400 dark:placeholder:text-slate-500 font-mono text-slate-900 dark:text-white"
+                        placeholder={t('login.newPassword')}
+                        className="w-full pr-10 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all py-2.5"
                         style={{ paddingLeft: '2.75rem' }}
                         minLength={4}
                       />
@@ -589,7 +626,7 @@ export default function LoginScreen({ onUnlock }) {
                         onClick={() => setShowPassword((v) => !v)}
                         className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                         tabIndex={-1}
-                        aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                        aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
                       >
                         {showPassword ? (
                           <EyeOff className="w-4 h-4" />
@@ -610,8 +647,8 @@ export default function LoginScreen({ onUnlock }) {
                         type={showConfirm ? 'text' : 'password'}
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Xác nhận mật khẩu"
-                        className="w-full pr-10 input-like placeholder:text-slate-400 dark:placeholder:text-slate-500 font-mono text-slate-900 dark:text-white"
+                        placeholder={t('login.confirmPassword')}
+                        className="w-full pr-10 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all py-2.5"
                         style={{ paddingLeft: '2.75rem' }}
                         minLength={4}
                       />
@@ -620,7 +657,7 @@ export default function LoginScreen({ onUnlock }) {
                         onClick={() => setShowConfirm((v) => !v)}
                         className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                         tabIndex={-1}
-                        aria-label={showConfirm ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                        aria-label={showConfirm ? t('login.hidePassword') : t('login.showPassword')}
                       >
                         {showConfirm ? (
                           <EyeOff className="w-4 h-4" />
@@ -646,9 +683,9 @@ export default function LoginScreen({ onUnlock }) {
                   <button
                     type="submit"
                     disabled={!username.trim() || password.length < 4 || !confirmPassword}
-                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium py-2.5 px-4 rounded-lg shadow-lg shadow-indigo-500/25 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full min-w-[140px] bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium py-2.5 px-4 rounded-lg shadow-lg shadow-indigo-500/25 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Thiết lập
+                    {t('login.setupBtn')}
                   </button>
                 </form>
 
@@ -662,9 +699,9 @@ export default function LoginScreen({ onUnlock }) {
                       setPassword('');
                       setConfirmPassword('');
                     }}
-                    className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+                    className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors whitespace-nowrap"
                   >
-                    &larr; Quay lại đăng nhập
+                    &larr; {t('login.backToLogin')}
                   </button>
                 </div>
               </>

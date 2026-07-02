@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { useI18n } from '../i18n';
 import { countWorkingDays } from '../utils/dateUtils';
 
 /**
@@ -10,6 +11,7 @@ import { countWorkingDays } from '../utils/dateUtils';
  *   snapshotB  — full snapshot object (with decompressed tasks)
  */
 export default function CompareView({ snapshotA, snapshotB }) {
+  const { t } = useI18n();
   const { tasks: tasksA = [], metadata: metaA = {} } = snapshotA || {};
   const { tasks: tasksB = [], metadata: metaB = {} } = snapshotB || {};
 
@@ -101,7 +103,7 @@ export default function CompareView({ snapshotA, snapshotB }) {
       transition={{ duration: 0.25, ease: 'easeOut' }}
     >
       <h4 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
-        So sánh: {nameA} vs {nameB}
+        {t('history.compare')}: {nameA} vs {nameB}
       </h4>
 
       {/* Summary table */}
@@ -109,23 +111,23 @@ export default function CompareView({ snapshotA, snapshotB }) {
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)]">
-              <th className="text-left px-3 py-2 font-semibold text-[var(--text-secondary)]">Chỉ số</th>
+              <th className="text-left px-3 py-2 font-semibold text-[var(--text-secondary)]">{t('stats.overview')}</th>
               <th className="text-right px-3 py-2 font-semibold text-[var(--text-secondary)]">{nameA}</th>
               <th className="text-right px-3 py-2 font-semibold text-[var(--text-secondary)]">{nameB}</th>
-              <th className="text-right px-3 py-2 font-semibold text-[var(--text-secondary)]">Delta</th>
+              <th className="text-right px-3 py-2 font-semibold text-[var(--text-secondary)]">{t('history.compare')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border-primary)]">
-            <Row label="Tổng task" a={delta.countA} b={delta.countB} delta={delta.deltaCount} />
-            <Row label="Tổng giờ log" a={delta.hoursA} b={delta.hoursB} delta={delta.deltaHours} isTime suffix="h" />
-            <Row label="Tổng ước tính" a={delta.estA} b={delta.estB} delta={delta.deltaEst} isTime suffix="h" />
-            <Row label="TB giờ/task" a={delta.avgA} b={delta.avgB} delta={delta.deltaAvg} isTime suffix="h" />
-            <Row label="Tăng ca (OT)" a={delta.otA} b={delta.otB} delta={delta.deltaOt} isTime suffix="h" />
-            <Row label="Nghỉ phép" a={delta.leaveA} b={delta.leaveB} delta={delta.deltaLeave} isTime suffix="h" />
-            <Row label="Effort" a={delta.effortA} b={delta.effortB} delta={null} noDelta />
+            <Row label={t('stats.totalTasks')} a={delta.countA} b={delta.countB} delta={delta.deltaCount} />
+            <Row label={t('stats.totalHours')} a={delta.hoursA} b={delta.hoursB} delta={delta.deltaHours} isTime suffix="h" />
+            <Row label={t('stats.totalEstimate')} a={delta.estA} b={delta.estB} delta={delta.deltaEst} isTime suffix="h" />
+            <Row label={t('stats.avgPerTask')} a={delta.avgA} b={delta.avgB} delta={delta.deltaAvg} isTime suffix="h" />
+            <Row label={t('ot.otHours')} a={delta.otA} b={delta.otB} delta={delta.deltaOt} isTime suffix="h" />
+            <Row label={t('ot.leaveHours')} a={delta.leaveA} b={delta.leaveB} delta={delta.deltaLeave} isTime suffix="h" />
+            <Row label={t('stats.effort')} a={delta.effortA} b={delta.effortB} delta={null} noDelta />
             {/* Task overlap */}
             <tr className="border-b border-[var(--border-primary)]">
-              <td className="px-3 py-2 text-[var(--text-secondary)]">Task chung</td>
+              <td className="px-3 py-2 text-[var(--text-secondary)]">{t('stats.totalTasks')}</td>
               <td className="px-3 py-2 text-right text-[var(--text-primary)] font-medium">
                 {delta.commonCount}
               </td>
@@ -134,28 +136,28 @@ export default function CompareView({ snapshotA, snapshotB }) {
               </td>
               <td className="px-3 py-2 text-right text-[var(--text-tertiary)]">
                 {delta.commonCount === delta.countA && delta.commonCount === delta.countB
-                  ? 'Giống nhau'
+                  ? t('stats.sufficient')
                   : ''}
               </td>
             </tr>
             <tr className="border-b border-[var(--border-primary)]">
-              <td className="px-3 py-2 text-[var(--text-secondary)]">Chỉ có ở {nameA}</td>
+              <td className="px-3 py-2 text-[var(--text-secondary)]">{nameA}</td>
               <td className="px-3 py-2 text-right text-[var(--danger)] font-medium">
                 {delta.onlyACount}
               </td>
               <td className="px-3 py-2 text-right text-[var(--text-tertiary)]">—</td>
               <td className="px-3 py-2 text-right text-[var(--danger)] text-[10px]">
-                {delta.onlyACount > 0 ? '\u2193 Mất' : ''}
+                {delta.onlyACount > 0 ? '\u2193' : ''}
               </td>
             </tr>
             <tr>
-              <td className="px-3 py-2 text-[var(--text-secondary)]">Chỉ có ở {nameB}</td>
+              <td className="px-3 py-2 text-[var(--text-secondary)]">{nameB}</td>
               <td className="px-3 py-2 text-right text-[var(--text-tertiary)]">—</td>
               <td className="px-3 py-2 text-right text-[var(--success)] font-medium">
                 {delta.onlyBCount}
               </td>
               <td className="px-3 py-2 text-right text-[var(--success)] text-[10px]">
-                {delta.onlyBCount > 0 ? '\u2191 Mới' : ''}
+                {delta.onlyBCount > 0 ? '\u2191' : ''}
               </td>
             </tr>
           </tbody>

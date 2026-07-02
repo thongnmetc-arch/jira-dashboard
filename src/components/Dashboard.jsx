@@ -1,31 +1,104 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RotateCcw, RefreshCw, Wifi, FileText, ArrowUp, ArrowLeftRight } from 'lucide-react';
+import { RotateCcw, RefreshCw, Wifi, FileText, ArrowUp, ArrowLeftRight, ChevronDown } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { fetchJiraIssues } from '../utils/jiraApi';
+import { useI18n } from '../i18n';
 import DashboardTabs from './DashboardTabs';
 import FilterBar from './FilterBar';
 import StatsGrid from './StatsGrid';
 import ChartGrid from './ChartGrid';
+import SprintBarChart from './charts/SprintBarChart';
+import ComponentBarChart from './charts/ComponentBarChart';
+import DailyTrendChart from './charts/DailyTrendChart';
+import TypeDoughnutChart from './charts/TypeDoughnutChart';
+import AssigneeBarChart from './charts/AssigneeBarChart';
+import BurndownChart from './charts/BurndownChart';
 import GanttChart from './GanttChart';
 import DataTable from './DataTable';
-import OTPanel from './OTPanel';
-import LabelManager from './LabelManager';
-import HistoryPanel from './HistoryPanel';
+import OTPanelInline from './OTPanelInline';
+import LabelsPanelInline from './LabelsPanelInline';
+import HistoryPanelInline from './HistoryPanelInline';
 import MonthComparison from './MonthComparison';
 import AutoReport from './AutoReport';
+import EffortCard from './EffortCard';
+import CompareView from './CompareView';
 
-const AUTO_REFRESH_OPTIONS = [
-  { value: 'off', label: 'Tắt' },
-  { value: '5', label: '5 phút' },
-  { value: '15', label: '15 phút' },
-  { value: '30', label: '30 phút' },
-  { value: '60', label: '1 giờ' },
+const AUTO_REFRESH_OPTIONS = (t) => [
+  { value: 'off', label: t('dashboard.off') },
+  { value: '5', label: t('dashboard.min5') },
+  { value: '15', label: t('dashboard.min15') },
+  { value: '30', label: t('dashboard.min30') },
+  { value: '60', label: t('dashboard.hour1') },
 ];
+
+// ── Custom dropdown ─────────────────────────────────────────────────────────
+
+function Dropdown({ value, onChange, options, className }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const hasValue = value !== '' && value !== undefined && value !== null;
+  const selected = options.find(o => o.value === value);
+  const displayLabel = selected ? selected.label : '';
+
+  return (
+    <div ref={ref} className="relative flex-shrink-0">
+      <button
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-1.5 px-2.5 h-8 rounded-lg text-xs font-medium transition-colors border cursor-pointer ${
+          hasValue
+            ? 'border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]'
+            : 'border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:border-[var(--accent)]/50'
+        } ${className || ''}`}
+      >
+        <span className="max-w-[100px] truncate">{displayLabel}</span>
+        <ChevronDown className={`w-3 h-3 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 w-56 max-h-60 overflow-y-auto bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-xl shadow-xl py-1">
+          {options.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-[var(--bg-secondary)] cursor-pointer ${
+                value === opt.value
+                  ? 'text-[var(--accent)] font-medium bg-[var(--accent-light)]'
+                  : 'text-[var(--text-primary)]'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Panel wrappers ──────────────────────────────────────────────────────────
 
 function OverviewPanel({ tasks }) {
+  const { t } = useI18n();
+  const { dispatch } = useApp();
+
+  // Overdue detection
+  const overdueTasks = tasks.filter(t => {
+    const s = t.status?.toLowerCase();
+    return s && s !== 'closed' && s !== 'resolved' && s !== 'cancelled';
+  });
+
+  const totalHr = tasks.reduce((s, t) => s + t.timeSpentHr, 0);
+
   return (
     <motion.div
       key="overview"
@@ -34,9 +107,78 @@ function OverviewPanel({ tasks }) {
       exit={{ opacity: 0, y: 6 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
     >
+      {/* ── Overdue tasks warning ── */}
+      {overdueTasks.length > 0 && (
+        <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center gap-3">
+          <span className="text-lg">⚠️</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-red-700 dark:text-red-300">
+              {overdueTasks.length} {t('common.overdue')}
+            </p>
+            <p className="text-xs text-red-600 dark:text-red-400">
+              {overdueTasks.slice(0, 3).map(t => t.key).join(', ')}
+              {overdueTasks.length > 3 ? ' ' + t('dashboard.overdueMore') + ' ' + (overdueTasks.length - 3) + ' ' + t('dashboard.otherTask') : ''}
+            </p>
+          </div>
+          <button
+            onClick={() => dispatch({ type: 'SET_DASHBOARD_TAB', payload: 'data' })}
+            className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+          >
+            {t('common.viewTable')}
+          </button>
+        </div>
+      )}
+
+      {/* ── Summary bar ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="text-sm text-[var(--text-secondary)]">
+          <strong className="text-[var(--text-primary)] font-semibold">{tasks.length}</strong> {t('dashboard.taskCount')} ·
+          <strong className="text-[var(--text-primary)] font-semibold ml-1">
+            {totalHr.toFixed(1)}h
+          </strong>{' '}
+          {t('dashboard.logged')}
+        </div>
+      </div>
+
+      {/* ── Filter bar ── */}
+      <FilterBar />
+
+      {/* ── StatsGrid ── */}
       <StatsGrid tasks={tasks} />
-      <div className="border-t border-[var(--border-primary)] my-6" />
-      <ChartGrid tasks={tasks} />
+
+    </motion.div>
+  );
+}
+
+function ChartsPanel({ tasks }) {
+  const [chartSubTab, setChartSubTab] = useState('sprint');
+  const chartSubTabs = [
+    { id: 'sprint', label: 'Sprint', Comp: SprintBarChart },
+    { id: 'component', label: 'Component', Comp: ComponentBarChart },
+    { id: 'daily', label: 'Daily', Comp: DailyTrendChart },
+    { id: 'type', label: 'Type', Comp: TypeDoughnutChart },
+    { id: 'assignee', label: 'Assignee', Comp: AssigneeBarChart },
+    { id: 'burndown', label: 'Burndown', Comp: BurndownChart },
+  ];
+  const ActiveChart = chartSubTabs.find(st => st.id === chartSubTab)?.Comp || SprintBarChart;
+
+  return (
+    <motion.div
+      key="charts"
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 6 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+    >
+      <div className="flex items-center gap-1 mb-4 bg-[var(--bg-secondary)] p-1 rounded-lg border border-[var(--border-primary)] w-fit">
+        {chartSubTabs.map(st => (
+          <button key={st.id} onClick={() => setChartSubTab(st.id)}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${chartSubTab === st.id ? 'bg-[var(--bg-primary)] text-[var(--accent)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
+            {st.label}
+          </button>
+        ))}
+      </div>
+      <ActiveChart tasks={tasks} />
     </motion.div>
   );
 }
@@ -70,6 +212,14 @@ function GanttPanel({ tasks }) {
 }
 
 function ComparePanel({ tasks }) {
+  const { state } = useApp();
+  const hasCompare = Array.isArray(state.compareSnapshots) && state.compareSnapshots.length === 2;
+  const [compareSubTab, setCompareSubTab] = useState('compare-month');
+  const compareSubTabs = [
+    { id: 'compare-month', label: 'So sánh tháng' },
+    { id: 'report', label: 'Báo cáo' },
+  ];
+
   return (
     <motion.div
       key="compare"
@@ -78,10 +228,30 @@ function ComparePanel({ tasks }) {
       exit={{ opacity: 0, y: 6 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
     >
-      <MonthComparison tasks={tasks} />
-      <div className="mt-6">
-        <AutoReport />
+      <div className="flex items-center gap-1 mb-4 bg-[var(--bg-secondary)] p-1 rounded-lg border border-[var(--border-primary)] w-fit">
+        {compareSubTabs.map(st => (
+          <button key={st.id} onClick={() => setCompareSubTab(st.id)}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${compareSubTab === st.id ? 'bg-[var(--bg-primary)] text-[var(--accent)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
+            {st.label}
+          </button>
+        ))}
       </div>
+
+      {compareSubTab === 'compare-month' && <MonthComparison tasks={tasks} />}
+      {compareSubTab === 'report' && (
+        <div className="mt-6">
+          <AutoReport />
+        </div>
+      )}
+
+      {hasCompare && (
+        <div className="mt-6">
+          <CompareView
+            snapshotA={state.compareSnapshots[0]}
+            snapshotB={state.compareSnapshots[1]}
+          />
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -89,19 +259,35 @@ function ComparePanel({ tasks }) {
 // ── Main Dashboard ──────────────────────────────────────────────────────────
 
 export default function Dashboard() {
+  const { t, lang } = useI18n();
   const { state, dispatch, onChangeProject } = useApp();
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState('');
   const intervalRef = useRef(null);
+  const navigate = useNavigate();
+  const { tab } = useParams();
 
-  // Local active tab (also synced to context for sidebar awareness)
-  const [activeTab, setActiveTab] = useState(state.dashboardTab || 'overview');
+  // Local active tab (initialized from URL param or context)
+  const [activeTab, setActiveTab] = useState(tab || state.dashboardTab || 'overview');
 
-  // Sync local tab state up to context
+  // Sync local tab state up to context and URL
   const handleTabChange = useCallback((tabId) => {
     setActiveTab(tabId);
+    navigate(`/dashboard/${tabId}`);
     dispatch({ type: 'SET_DASHBOARD_TAB', payload: tabId });
-  }, [dispatch]);
+  }, [dispatch, navigate]);
+
+  // Sync activeTab when URL param changes (e.g. browser back/forward)
+  useEffect(() => {
+    if (tab && tab !== activeTab) {
+      setActiveTab(tab);
+    }
+  }, [tab]);
+
+  // Sync from context when sidebar dispatches SET_DASHBOARD_TAB
+  useEffect(() => {
+    setActiveTab(state.dashboardTab);
+  }, [state.dashboardTab]);
 
   const { allTasks, filters } = state;
 
@@ -148,7 +334,7 @@ export default function Dashboard() {
             dispatch({ type: 'SET_TASKS', payload: freshTasks });
             dispatch({ type: 'SET_LAST_REFRESH_TIME', payload: new Date().toISOString() });
           } catch (err) {
-            setRefreshError('Tự động cập nhật thất bại: ' + (err.message || 'Lỗi không xác định'));
+            setRefreshError(t('dashboard.refreshError') + ' ' + (err.message || t('common.error')));
           }
         }, minutes * 60 * 1000);
       }
@@ -172,21 +358,17 @@ export default function Dashboard() {
       if (!url || !token || !projectKey) return;
       const freshTasks = await fetchJiraIssues(url, token, projectKey.toUpperCase(), assignee || '', jql || '');
       if (freshTasks.length === 0) {
-        setRefreshError('Không tìm thấy công việc nào.');
+        setRefreshError(t('dashboard.noTasksFound'));
         return;
       }
       dispatch({ type: 'SET_TASKS', payload: freshTasks });
       dispatch({ type: 'SET_LAST_REFRESH_TIME', payload: new Date().toISOString() });
     } catch (err) {
-      setRefreshError('Cập nhật thất bại: ' + (err.message || 'Lỗi không xác định'));
+      setRefreshError(t('dashboard.manualRefreshError') + ' ' + (err.message || t('common.error')));
     } finally {
       setRefreshing(false);
     }
   }, [state.dataSource, state.jiraConnected, state.jiraConfig, dispatch]);
-
-  const handleReset = () => {
-    dispatch({ type: 'RESET' });
-  };
 
   const setAutoRefresh = (value) => {
     dispatch({ type: 'SET_JIRA_AUTO_REFRESH', payload: value });
@@ -198,7 +380,7 @@ export default function Dashboard() {
     if (!isoString) return '—';
     try {
       const d = new Date(isoString);
-      return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      return d.toLocaleTimeString(lang === 'vi' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     } catch {
       return '—';
     }
@@ -220,7 +402,7 @@ export default function Dashboard() {
               <button
                 onClick={() => onChangeProject?.()}
                 className="flex items-center gap-1.5 text-[var(--success)] font-medium hover:underline cursor-pointer"
-                title="Đổi dự án"
+                title={t('dashboard.changeProject')}
               >
                 <Wifi className="w-3.5 h-3.5" />
                 <span>JIRA: {state.jiraConfig.projectKey}</span>
@@ -228,35 +410,31 @@ export default function Dashboard() {
               </button>
               <span className="text-[var(--text-tertiary)]">·</span>
               <span className="text-[var(--text-tertiary)]">
-                Cập nhật lần cuối: <strong>{formatTime(state.lastRefreshTime)}</strong>
+                {t('dashboard.lastUpdate')} <strong>{formatTime(state.lastRefreshTime)}</strong>
               </span>
               {refreshing && (
                 <span className="text-[var(--accent)] flex items-center gap-1">
                   <RefreshCw className="w-3 h-3 animate-spin" />
-                  Đang cập nhật...
+                  {t('dashboard.updating')}
                 </span>
               )}
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5">
                 <span className="text-[0.65rem] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider whitespace-nowrap">
-                  Tự động cập nhật:
+                  {t('dashboard.autoRefresh')}:
                 </span>
-                <select
+                <Dropdown
                   value={state.jiraAutoRefresh}
-                  onChange={(e) => setAutoRefresh(e.target.value)}
-                  className="input-like text-xs py-1 px-2 min-w-[80px]"
-                >
-                  {AUTO_REFRESH_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+                  onChange={setAutoRefresh}
+                  options={AUTO_REFRESH_OPTIONS(t)}
+                />
               </div>
               <button
                 onClick={handleManualRefresh}
                 disabled={refreshing}
                 className="p-1.5 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--accent)] transition-colors disabled:opacity-50 cursor-pointer"
-                title="Cập nhật thủ công"
+                title={t('dashboard.manualRefresh')}
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
               </button>
@@ -269,15 +447,15 @@ export default function Dashboard() {
           <div className="mb-6 flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-1.5 text-[11px] bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg px-2.5 py-1.5">
               {state.dataSource === 'csv' ? (
-                <>📂 <span>Nguồn: <strong>File</strong></span></>
+                <>📂 <span>{t('dashboard.source')} <strong>{t('dashboard.csvSource')}</strong></span></>
               ) : state.dataSource === 'jira' ? (
-                <>🔌 <span>Nguồn: <strong>JIRA API</strong> · {state.jiraConfig?.projectKey || ''}</span></>
+                <>🔌 <span>{t('dashboard.source')} <strong>{t('dashboard.jiraApi')}</strong> · {state.jiraConfig?.projectKey || ''}</span></>
               ) : state.dataSource === 'jira-bookmarklet' ? (
-                <>📌 <span>Nguồn: <strong>JIRA Bookmark</strong></span></>
+                <>📌 <span>{t('dashboard.source')} <strong>{t('dashboard.bookmark')}</strong></span></>
               ) : state.dataSource === 'html' ? (
-                <>📄 <span>Nguồn: <strong>HTML Export</strong></span></>
+                <>📄 <span>{t('dashboard.source')} <strong>{t('dashboard.htmlExport')}</strong></span></>
               ) : state.dataSource === 'history' ? (
-                <>🕒 <span>Nguồn: <strong>Lịch sử</strong> · {state.fileName || ''}</span></>
+                <>🕒 <span>{t('dashboard.source')} <strong>{t('dashboard.historySource')}</strong> · {state.fileName || ''}</span></>
               ) : null}
             </div>
 
@@ -288,7 +466,7 @@ export default function Dashboard() {
             )}
 
             <span className="text-[11px] text-[var(--text-tertiary)]">
-              {state.allTasks.length} công việc
+              {state.allTasks.length} {t('dashboard.taskCount')}
             </span>
           </div>
         )}
@@ -306,34 +484,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ── Overdue tasks warning ── */}
-        {(() => {
-          const overdueTasks = filteredTasks.filter(t => {
-            const s = t.status?.toLowerCase();
-            return s && s !== 'closed' && s !== 'resolved' && s !== 'cancelled';
-          });
-          return overdueTasks.length > 0 ? (
-            <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center gap-3">
-              <span className="text-lg">⚠️</span>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-red-700 dark:text-red-300">
-                  {overdueTasks.length} task chưa được đóng
-                </p>
-                <p className="text-xs text-red-600 dark:text-red-400">
-                  {overdueTasks.slice(0, 3).map(t => t.key).join(', ')}
-                  {overdueTasks.length > 3 ? ' và ' + (overdueTasks.length - 3) + ' task khác' : ''}
-                </p>
-              </div>
-              <button
-                onClick={() => handleTabChange('data')}
-                className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
-              >
-                Xem bảng
-              </button>
-            </div>
-          ) : null;
-        })()}
-
         {/* ── OT/Leave notification ── */}
         {(state.otLeaveData?.otTotal > 0 || state.otLeaveData?.leaveTotal > 0) && (
           <div className="mb-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-2.5 flex items-center gap-3 text-xs">
@@ -341,31 +491,17 @@ export default function Dashboard() {
             <div className="flex items-center gap-4 flex-wrap">
               {state.otLeaveData.otTotal > 0 && (
                 <span className="text-indigo-700 dark:text-indigo-300 font-medium">
-                  ⏱ Tăng ca: +{state.otLeaveData.otTotal}h
+                  ⏱ {t('dashboard.otPrefix')}{state.otLeaveData.otTotal}h
                 </span>
               )}
               {state.otLeaveData.leaveTotal > 0 && (
                 <span className="text-indigo-700 dark:text-indigo-300 font-medium">
-                  🏖 Nghỉ phép: -{state.otLeaveData.leaveTotal}h
+                  🏖 {t('dashboard.leavePrefix')}{state.otLeaveData.leaveTotal}h
                 </span>
               )}
             </div>
           </div>
         )}
-
-        {/* ── Summary bar ── */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-          <div className="text-sm text-[var(--text-secondary)]">
-            <strong className="text-[var(--text-primary)] font-semibold">{filteredTasks.length}</strong> công việc ·
-            <strong className="text-[var(--text-primary)] font-semibold ml-1">
-              {totalHr.toFixed(1)}h
-            </strong>{' '}
-            đã log
-          </div>
-        </div>
-
-        {/* ── Filter bar (always visible) ── */}
-        <FilterBar />
 
         {/* ── Tab navigation ── */}
         <DashboardTabs activeTab={activeTab} onTabChange={handleTabChange} />
@@ -373,25 +509,15 @@ export default function Dashboard() {
         {/* ── Tab content panels ── */}
         <AnimatePresence mode="wait">
           {activeTab === 'overview' && <OverviewPanel tasks={filteredTasks} />}
+          {activeTab === 'charts' && <ChartsPanel tasks={filteredTasks} />}
           {activeTab === 'data' && <DataPanel tasks={filteredTasks} />}
           {activeTab === 'gantt' && <GanttPanel tasks={filteredTasks} />}
           {activeTab === 'compare' && <ComparePanel tasks={filteredTasks} />}
+          {activeTab === 'ot' && <OTPanelInline />}
+          {activeTab === 'labels' && <LabelsPanelInline />}
+          {activeTab === 'history' && <HistoryPanelInline />}
         </AnimatePresence>
 
-        {/* ── Side drawers (always rendered, visibility controlled internally) ── */}
-        <OTPanel />
-        <LabelManager />
-        <HistoryPanel />
-
-        {/* ── Reset button ── */}
-        <div className="mb-8 mt-6">
-          <button
-            onClick={handleReset}
-            className="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] rounded-md text-sm font-medium transition-all cursor-pointer"
-          >
-            Tải file khác
-          </button>
-        </div>
       </motion.div>
 
       {/* ── Back to top ── */}
@@ -402,7 +528,7 @@ export default function Dashboard() {
           else window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         className="fixed bottom-6 right-6 z-[100] w-10 h-10 rounded-full bg-[var(--accent)] text-white shadow-lg hover:opacity-90 hover:scale-110 transition-all flex items-center justify-center"
-        title="Lên đầu trang"
+        title={t('dashboard.backToTop')}
       >
         <ArrowUp size={20} />
       </button>

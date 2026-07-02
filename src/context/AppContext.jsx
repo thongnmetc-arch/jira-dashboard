@@ -47,14 +47,18 @@ const initialState = {
   selectedProject: '',
   // Dashboard tab navigation
   dashboardTab: 'overview',
-  // Weekly Planner visibility
-  showWeeklyPlanner: false,
+  // History compare snapshots (for CompareView in compare tab)
+  compareSnapshots: null,
+  // Wizard routing state (set during connect → project → query → dashboard flow)
+  wizardJiraConfig: null,
+  wizardSelectedProject: '',
+  wizardQueryConfig: null,
 };
 
 function reducer(state, action) {
   switch (action.type) {
     case 'SET_TASKS': {
-      const tasks = action.payload;
+      const tasks = action.payload.filter(t => t.status?.toLowerCase() !== 'cancelled');
       // Sync labels from existing assignments and run auto-rules
       syncTaskLabels(tasks, state.labelAssignments);
       const autoAssignments = runAutoRules(state.autoRules || [], tasks);
@@ -302,8 +306,14 @@ function reducer(state, action) {
     }
     case 'SET_DASHBOARD_TAB':
       return { ...state, dashboardTab: action.payload };
-    case 'SET_SHOW_WEEKLY_PLANNER':
-      return { ...state, showWeeklyPlanner: action.payload };
+    case 'SET_COMPARE_SNAPSHOTS':
+      return { ...state, compareSnapshots: action.payload };
+    case 'SET_WIZARD_JIRA_CONFIG':
+      return { ...state, wizardJiraConfig: action.payload };
+    case 'SET_WIZARD_PROJECT':
+      return { ...state, wizardSelectedProject: action.payload };
+    case 'SET_WIZARD_QUERY_CONFIG':
+      return { ...state, wizardQueryConfig: action.payload };
     default:
       return state;
   }
@@ -391,6 +401,7 @@ export function AppProvider({ children, onChangeProject }) {
   const getFilteredTasks = useCallback(() => {
     const f = state.filters;
     return state.allTasks.filter(t => {
+      if (t.status?.toLowerCase() === 'cancelled') return false;
       if (f.sprint && t.primarySprint !== f.sprint) return false;
       if (f.component && !t.comps.includes(f.component)) return false;
       if (f.assignee && t.assignee !== f.assignee) return false;

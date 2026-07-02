@@ -2,7 +2,7 @@ import { countWorkingDays } from './dateUtils';
 
 /**
  * Effort = (workingDays × 7h + OT - leave) / totalEstimateHours
- * Chỉ loại trừ các task có trạng thái Cancelled.
+ * Chỉ tính các task có trạng thái Resolved hoặc Closed.
  * effort < 1 → số giờ chuẩn ít hơn ước tính (tốt)
  * effort = 1 → vừa đúng ước tính
  * effort > 1 → số giờ chuẩn nhiều hơn ước tính (cảnh báo)
@@ -10,7 +10,7 @@ import { countWorkingDays } from './dateUtils';
 export function calculateEffort(tasks, otLeaveData) {
   const validTasks = tasks.filter(t => {
     const s = t.status?.toLowerCase();
-    return s !== 'cancelled';
+    return s === 'resolved' || s === 'closed';
   });
   if (validTasks.length === 0) return { effort: 0, totalEstHr: 0, workingDays: 0, otHr: 0, leaveHr: 0, detail: '' };
 
@@ -22,7 +22,13 @@ export function calculateEffort(tasks, otLeaveData) {
   const primaryMonth = Object.entries(monthCounts).sort((a, b) => b[1] - a[1])[0][0];
   const [year, month] = primaryMonth.split('-').map(Number);
 
-  const totalEstHr = validTasks.reduce((s, t) => s + (t.originalEstimateHr || t.estimateHr || 0), 0);
+  const monthTasks = validTasks.filter(t => {
+    const d = t.resolved || t.created;
+    if (!d) return false;
+    return d.getFullYear() === year && (d.getMonth() + 1) === month;
+  });
+
+  const totalEstHr = monthTasks.reduce((s, t) => s + (t.originalEstimateHr || t.estimateHr || 0), 0);
   const workingDays = countWorkingDays(year, month);
 
   const otHr = otLeaveData?.otTotal || 0;
@@ -44,7 +50,7 @@ export function calculateEffort(tasks, otLeaveData) {
 export function calculateAverageEffort(tasks, otLeaveData) {
   const validTasks = tasks.filter(t => {
     const s = t.status?.toLowerCase();
-    return s !== 'cancelled';
+    return s === 'resolved' || s === 'closed';
   });
   if (validTasks.length === 0) return { avgEffort: 0, monthsWithData: 0, totalMonths: 0 };
 

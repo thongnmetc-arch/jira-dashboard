@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import { ChevronDown, Layers, Box, User } from 'lucide-react';
 import LabelFilter from './LabelFilter';
+import { useI18n } from '../i18n';
 
 function FilterPopover({ label, icon: Icon, options, value, onChange, placeholder }) {
   const [open, setOpen] = useState(false);
@@ -67,6 +68,7 @@ function FilterPopover({ label, icon: Icon, options, value, onChange, placeholde
 }
 
 export default function FilterBar() {
+  const { t } = useI18n();
   const { state, dispatch } = useApp();
 
   const sprints = useMemo(() => {
@@ -115,32 +117,32 @@ export default function FilterBar() {
       <div className="flex items-center gap-2">
         {/* Sprint popover */}
         <FilterPopover
-          label="Sprint"
+          label={t('filter.sprint')}
           icon={Layers}
           options={sprints}
           value={state.filters.sprint}
           onChange={(v) => updateFilter('sprint', v)}
-          placeholder="Tất cả Sprint"
+          placeholder={t('filter.allSprints')}
         />
 
         {/* Component popover */}
         <FilterPopover
-          label="Phân hệ"
+          label={t('filter.component')}
           icon={Box}
           options={comps}
           value={state.filters.component}
           onChange={(v) => updateFilter('component', v)}
-          placeholder="Tất cả phân hệ"
+          placeholder={t('filter.allComponents')}
         />
 
         {/* Assignee popover */}
         <FilterPopover
-          label="Người TH"
+          label={t('filter.assignee')}
           icon={User}
           options={assignees}
           value={state.filters.assignee}
           onChange={(v) => updateFilter('assignee', v)}
-          placeholder="Tất cả"
+          placeholder={t('filter.all')}
         />
 
         {/* Vertical separator */}
@@ -151,7 +153,7 @@ export default function FilterBar() {
           type="date"
           value={state.filters.dateFrom}
           onChange={(e) => updateFilter('dateFrom', e.target.value)}
-          placeholder="Từ ngày"
+          placeholder={t('filter.fromDate')}
           className={filterClass(!!state.filters.dateFrom, 'w-[135px]') + ' pr-6'}
         />
 
@@ -160,7 +162,7 @@ export default function FilterBar() {
           type="date"
           value={state.filters.dateTo}
           onChange={(e) => updateFilter('dateTo', e.target.value)}
-          placeholder="Đến ngày"
+          placeholder={t('filter.toDate')}
           className={filterClass(!!state.filters.dateTo, 'w-[135px]') + ' pr-6'}
         />
 
@@ -176,7 +178,7 @@ export default function FilterBar() {
             animate={{ scale: 1, opacity: 1 }}
             onClick={resetFilters}
             className="flex-shrink-0 h-8 w-8 flex items-center justify-center text-sm bg-[var(--bg-secondary)] hover:bg-[var(--accent-light)] rounded-lg border border-[var(--border-primary)] text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors cursor-pointer"
-            title="Xóa tất cả bộ lọc"
+            title={t('filter.clearAll')}
           >
             ↺
           </motion.button>

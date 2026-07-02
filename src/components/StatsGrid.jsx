@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 import { Clock, CheckCircle2, Target, BarChart3 } from 'lucide-react';
 import EffortCard from './EffortCard';
+import { useI18n } from '../i18n';
 
 function AnimatedNumber({ value, decimals = 1 }) {
   const display = typeof value === 'number' ? value.toFixed(decimals) : value;
@@ -34,6 +35,7 @@ const icons = [
 ];
 
 export default function StatsGrid({ tasks }) {
+  const { t } = useI18n();
   const { overallStats } = useMemo(() => {
     // ---- Row 1: all tasks, all statuses ----
     const totalCount = tasks.length;
@@ -44,10 +46,10 @@ export default function StatsGrid({ tasks }) {
 
     return {
       overallStats: [
-        { label: 'Tổng số CV', value: totalCount, decimals: 0, sub: 'tất cả trạng thái' },
-        { label: 'Giờ đã log', value: totalSpent, decimals: 1, sub: 'giờ (Time Spent)' },
-        { label: 'Giờ ước tính', value: totalEst, decimals: 1, sub: 'giờ (Estimate)' },
-        { label: 'TB mỗi task', value: overallAvg, decimals: 1, sub: 'giờ / công việc' },
+        { label: t('stats.totalTasks'), value: totalCount, decimals: 0, sub: t('stats.allStatuses') },
+        { label: t('stats.totalHours'), value: totalSpent, decimals: 1, sub: `${t('common.hours')} (Time Spent)` },
+        { label: t('stats.totalEstimate'), value: totalEst, decimals: 1, sub: `${t('common.hours')} (Estimate)` },
+        { label: t('stats.avgPerTask'), value: overallAvg, decimals: 1, sub: `${t('common.hours')} / ${t('common.tasks')}` },
       ],
     };
   }, [tasks]);
@@ -80,7 +82,7 @@ export default function StatsGrid({ tasks }) {
     <>
       {/* Row 1 — Tổng quan (all tasks, all statuses) */}
       <div className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
-        📊 Tổng quan
+        📊 {t('stats.overview')}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
         {renderStatCards(overallStats)}
@@ -89,7 +91,7 @@ export default function StatsGrid({ tasks }) {
 
       {/* Row 2 — Tháng hiện tại (only Resolved / Closed) */}
       <div className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2 mt-4">
-        📅 Tháng hiện tại
+        📅 {t('stats.currentMonth')}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
         {renderStatCards(overallStats)}

@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useI18n } from '../i18n';
 
 export default function OTPanel() {
+  const { t } = useI18n();
   const { state, dispatch } = useApp();
   const [otTotal, setOtTotal] = useState(state.otLeaveData?.otTotal && state.otLeaveData.otTotal > 0 ? state.otLeaveData.otTotal : '');
   const [leaveTotal, setLeaveTotal] = useState(state.otLeaveData?.leaveTotal && state.otLeaveData.leaveTotal > 0 ? state.otLeaveData.leaveTotal : '');
@@ -53,7 +55,7 @@ export default function OTPanel() {
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-[var(--accent)]" />
                 <h2 className="text-sm font-semibold text-[var(--text-primary)]">
-                  OT & Nghỉ phép
+                  {t('ot.title')}
                 </h2>
               </div>
               <button
@@ -69,7 +71,7 @@ export default function OTPanel() {
               {/* OT Hours */}
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
-                  ⏱ Tăng ca (OT)
+                  {t('ot.otLabel')}
                 </label>
 
                 {/* Quick add buttons */}
@@ -98,7 +100,7 @@ export default function OTPanel() {
 
                 {/* Manual input */}
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-[var(--text-tertiary)]">Tổng:</span>
+                  <span className="text-xs text-[var(--text-tertiary)]">{t('ot.totalLabel')}</span>
                   <input
                     type="number"
                     min="0"
@@ -112,10 +114,10 @@ export default function OTPanel() {
                     className="w-24 px-3 py-2 text-sm font-semibold bg-[var(--bg-secondary)] border-2 border-[var(--border-primary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 text-center"
                     placeholder="0"
                   />
-                  <span className="text-sm text-[var(--text-secondary)]">giờ</span>
+                  <span className="text-sm text-[var(--text-secondary)]">{t('ot.hoursUnit')}</span>
                   <button onClick={() => setOtTotal('')}
                     className="text-xs text-[var(--text-tertiary)] hover:text-red-500 transition-colors ml-1">
-                    Xóa
+                    {t('ot.clear')}
                   </button>
                 </div>
               </div>
@@ -123,32 +125,32 @@ export default function OTPanel() {
               {/* Leave Hours */}
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
-                  🏖 Nghỉ phép
+                  {t('ot.leaveLabel')}
                 </label>
 
                 {/* Quick add buttons — each click adds to total */}
                 <div className="flex gap-1.5 flex-wrap mb-3">
                   <button onClick={() => setLeaveTotal((prev) => (parseFloat(prev) || 0) + 1.75)}
                     className="text-xs px-2.5 py-1.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
-                    +¼ ngày (1.75h)
+                    {t('ot.quickAddQuarter')}
                   </button>
                   <button onClick={() => setLeaveTotal((prev) => (parseFloat(prev) || 0) + 3.5)}
                     className="text-xs px-2.5 py-1.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
-                    +½ ngày (3.5h)
+                    {t('ot.quickAddHalf')}
                   </button>
                   <button onClick={() => setLeaveTotal((prev) => (parseFloat(prev) || 0) + 7)}
                     className="text-xs px-2.5 py-1.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
-                    +1 ngày (7h)
+                    {t('ot.quickAddOneDay')}
                   </button>
                   <button onClick={() => setLeaveTotal((prev) => (parseFloat(prev) || 0) + 14)}
                     className="text-xs px-2.5 py-1.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
-                    +2 ngày (14h)
+                    {t('ot.quickAddTwoDay')}
                   </button>
                 </div>
 
                 {/* Display current total + manual input for fine-tuning */}
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-[var(--text-tertiary)]">Tổng:</span>
+                  <span className="text-xs text-[var(--text-tertiary)]">{t('ot.totalLabel')}</span>
                   <input
                     type="number"
                     min="0"
@@ -162,10 +164,10 @@ export default function OTPanel() {
                     className="w-24 px-3 py-2 text-sm font-semibold bg-[var(--bg-secondary)] border-2 border-[var(--border-primary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 text-center"
                     placeholder="0"
                   />
-                  <span className="text-sm text-[var(--text-secondary)]">giờ</span>
+                  <span className="text-sm text-[var(--text-secondary)]">{t('ot.hoursUnit')}</span>
                   <button onClick={() => setLeaveTotal('')}
                     className="text-xs text-[var(--text-tertiary)] hover:text-red-500 transition-colors ml-1">
-                    Xóa
+                    {t('ot.clear')}
                   </button>
                 </div>
               </div>
@@ -175,11 +177,11 @@ export default function OTPanel() {
                 onClick={handleSave}
                 className="w-full bg-[var(--accent)] hover:opacity-90 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-opacity cursor-pointer"
               >
-                💾 Lưu & Tính lại Effort
+                💾 {t('ot.save')}
               </button>
 
               <p className="text-xs text-[var(--text-tertiary)]">
-                Effort sẽ tự động tính lại: (Ngày công × 7 + OT - Nghỉ) / Tổng giờ log
+                {t('ot.effortFormula')}
               </p>
             </div>
           </motion.div>

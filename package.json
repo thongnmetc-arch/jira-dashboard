@@ -24,7 +24,10 @@
       "package.json"
     ],
     "win": {
-      "target": ["portable", "nsis"]
+      "target": [
+        "portable",
+        "nsis"
+      ]
     },
     "portable": {
       "artifactName": "JIRA-Dashboard.exe"
@@ -36,7 +39,8 @@
     "lucide-react": "^0.400.0",
     "react": "^19.0.0",
     "react-chartjs-2": "^5.3.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^6.30.4"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",

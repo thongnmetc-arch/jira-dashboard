@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
+import { Routes, Route, useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AppProvider, useApp } from './context/AppContext';
 import AppShell from './components/layout/AppShell';
@@ -134,48 +135,6 @@ function AppContent({ jiraConfig: wizardConfig, selectedProject: wizardProject }
     return () => window.removeEventListener('hashchange', readHash);
   }, [dispatch]);
 
-  // Listen for HTML import events from sidebar
-  useEffect(() => {
-    const handleStart = () => dispatch({ type: 'SET_LOADING', payload: true });
-    const handleData = (e) => {
-      const tasks = e.detail.tasks;
-      const totalHr = tasks.reduce((s, t) => s + t.estimateHr, 0);
-      dispatch({
-        type: 'SET_FILE_INFO',
-        payload: {
-          fileName: e.detail.fileName,
-          fileStats:
-            tasks.length +
-            ' công việc · ' +
-            totalHr.toFixed(1) +
-            ' giờ ước tính',
-        },
-      });
-      dispatch({ type: 'SET_TASKS', payload: tasks });
-      dispatch({ type: 'SET_OT_LEAVE', payload: { otTotal: 0, leaveTotal: 0 } });
-      try {
-        localStorage.removeItem('jira-dash-ot-leave');
-      } catch (e) {}
-      dispatch({ type: 'SET_JQL_USED', payload: '' });
-      dispatch({ type: 'SET_DATA_SOURCE', payload: 'html' });
-      dispatch({ type: 'SET_LOADED', payload: true });
-      dispatch({ type: 'SET_LOADING', payload: false });
-    };
-    const handleError = (e) => {
-      dispatch({ type: 'SET_ERROR', payload: 'Lỗi: ' + e.detail.message });
-      dispatch({ type: 'SET_LOADING', payload: false });
-    };
-
-    window.addEventListener('html-import-start', handleStart);
-    window.addEventListener('html-import-data', handleData);
-    window.addEventListener('html-import-error', handleError);
-    return () => {
-      window.removeEventListener('html-import-start', handleStart);
-      window.removeEventListener('html-import-data', handleData);
-      window.removeEventListener('html-import-error', handleError);
-    };
-  }, [dispatch]);
-
   return (
     <AppShell>
       {/* Error message */}
@@ -203,11 +162,7 @@ function AppContent({ jiraConfig: wizardConfig, selectedProject: wizardProject }
             <JiraConnect />
           </div>
         ) : state.isLoaded ? (
-          state.showWeeklyPlanner ? (
-            <WeeklyPlanner key="weekly-planner" />
-          ) : (
-            <Dashboard key="dashboard" />
-          )
+          <Dashboard key="dashboard" />
         ) : null}
       </AnimatePresence>
     </AppShell>
@@ -224,87 +179,131 @@ function WizardDashboard({ jiraConfig, selectedProject, onChangeProject }) {
   );
 }
 
-// ── Wizard steps renderer ───────────────────────────────────────────────────
+// ── Route components ────────────────────────────────────────────────────────
 
-function WizardSteps({ step, jiraConfig, setJiraConfig, setStep, selectedProject, setSelectedProject, queryConfig, setQueryConfig, onChangeProject }) {
+/** Route: /login — Login screen */
+function LoginRoute() {
+  const navigate = useNavigate();
+  return <LoginScreen onUnlock={() => navigate('/connect')} />;
+}
+
+/** Route: /connect — JIRA connection wizard step */
+function ConnectRoute() {
+  const navigate = useNavigate();
+  const { dispatch } = useApp();
+
   return (
-    <AppProvider onChangeProject={onChangeProject}>
-      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center p-4">
-        <div className="w-full max-w-2xl">
-          <AnimatePresence mode="wait">
-            {step === 'connect' && (
-              <motion.div
-                key="wizard-connect"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                <JiraConnect
-                  mode="wizard"
-                  onConnected={(config) => {
-                    setJiraConfig(config);
-                    setStep('project');
-                  }}
-                  onBack={() => setStep('login')}
-                />
-              </motion.div>
-            )}
-            {step === 'project' && (
-              <motion.div
-                key="wizard-project"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                <ProjectSelector
-                  jiraConfig={jiraConfig}
-                  onSelect={(key) => {
-                    setSelectedProject(key);
-                    setStep('query');
-                  }}
-                  onBack={() => setStep('connect')}
-                />
-              </motion.div>
-            )}
-            {step === 'reselect-project' && (
-              <motion.div
-                key="wizard-reselect-project"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                <ProjectSelector
-                  key="reselect"
-                  jiraConfig={jiraConfig}
-                  onSelect={(key) => {
-                    setSelectedProject(key);
-                    setStep('query');
-                  }}
-                  reselect
-                />
-              </motion.div>
-            )}
-            {step === 'query' && (
-              <motion.div
-                key="wizard-query"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                <QueryConfig
-                  jiraConfig={jiraConfig}
-                  selectedProject={selectedProject}
-                  onStart={(config) => {
-                    setQueryConfig(config);
-                    setStep('dashboard');
-                  }}
-                  onBack={() => setStep('project')}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
+      <div className="w-full max-w-3xl">
+        <JiraConnect
+          mode="wizard"
+          onConnected={(config) => {
+            dispatch({ type: 'SET_WIZARD_JIRA_CONFIG', payload: config });
+            navigate('/projects');
+          }}
+          onBack={() => navigate('/')}
+        />
       </div>
+    </div>
+  );
+}
+
+/** Route: /projects (and /projects?reselect=true) — Project selection wizard step */
+function ProjectsRoute() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { state, dispatch } = useApp();
+  const reselect = searchParams.get('reselect') === 'true';
+
+  if (!state.wizardJiraConfig) {
+    return <Navigate to="/connect" replace />;
+  }
+
+  return (
+    <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center p-6">
+      <div className="w-full max-w-3xl">
+        <ProjectSelector
+          jiraConfig={state.wizardJiraConfig}
+          onSelect={(key) => {
+            dispatch({ type: 'SET_WIZARD_PROJECT', payload: key });
+            navigate('/query');
+          }}
+          onBack={reselect ? undefined : () => navigate('/connect')}
+          reselect={reselect}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Route: /query — Query configuration wizard step */
+function QueryRoute() {
+  const navigate = useNavigate();
+  const { state, dispatch } = useApp();
+
+  if (!state.wizardJiraConfig || !state.wizardSelectedProject) {
+    return <Navigate to="/" replace />;
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
+      <div className="w-full max-w-3xl">
+        <QueryConfig
+          jiraConfig={state.wizardJiraConfig}
+          selectedProject={state.wizardSelectedProject}
+          onStart={(config) => {
+            dispatch({ type: 'SET_WIZARD_QUERY_CONFIG', payload: config });
+            navigate('/dashboard');
+          }}
+          onBack={() => navigate('/projects')}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Route: /dashboard (/dashboard/:tab) — Main dashboard view */
+function DashboardRoute() {
+  const navigate = useNavigate();
+  const { state } = useApp();
+
+  const handleChangeProject = useCallback(() => {
+    navigate('/projects?reselect=true');
+  }, [navigate]);
+
+  if (!state.wizardJiraConfig || !state.wizardSelectedProject) {
+    return <Navigate to="/" replace />;
+  }
+
+  const mergedConfig = {
+    ...state.wizardJiraConfig,
+    email: state.wizardQueryConfig?.email || '',
+    assignee: state.wizardQueryConfig?.email || '',
+    jql: state.wizardQueryConfig?.jql || '',
+  };
+
+  return (
+    <WizardDashboard
+      jiraConfig={mergedConfig}
+      selectedProject={state.wizardSelectedProject}
+      onChangeProject={handleChangeProject}
+    />
+  );
+}
+
+/** Route: /weekly-planner — Weekly planner view */
+function WeeklyPlannerRoute() {
+  const navigate = useNavigate();
+
+  const handleChangeProject = useCallback(() => {
+    navigate('/projects?reselect=true');
+  }, [navigate]);
+
+  return (
+    <AppProvider onChangeProject={handleChangeProject}>
+      <AppShell>
+        <WeeklyPlanner />
+      </AppShell>
     </AppProvider>
   );
 }
@@ -312,50 +311,18 @@ function WizardSteps({ step, jiraConfig, setJiraConfig, setStep, selectedProject
 // ── Main App ────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [step, setStep] = useState('login');
-  const [jiraConfig, setJiraConfig] = useState(null);
-  const [selectedProject, setSelectedProject] = useState(null);
-  const [queryConfig, setQueryConfig] = useState(null);
-
-  const handleChangeProject = () => {
-    setStep('reselect-project');
-  };
-
-  // Login screen
-  if (step === 'login') {
-    return <LoginScreen onUnlock={() => setStep('connect')} />;
-  }
-
-  // Wizard steps 2-4 (connect + project + query) and reselect-project
-  if (step === 'connect' || step === 'project' || step === 'query' || step === 'reselect-project') {
-    return (
-      <WizardSteps
-        step={step}
-        jiraConfig={jiraConfig}
-        setJiraConfig={setJiraConfig}
-        setStep={setStep}
-        selectedProject={selectedProject}
-        setSelectedProject={setSelectedProject}
-        queryConfig={queryConfig}
-        setQueryConfig={setQueryConfig}
-        onChangeProject={handleChangeProject}
-      />
-    );
-  }
-
-  // Dashboard step (step 4+5)
-  const mergedConfig = {
-    ...jiraConfig,
-    email: queryConfig?.email || '',
-    assignee: queryConfig?.email || '',
-    jql: queryConfig?.jql || '',
-  };
-
   return (
-    <WizardDashboard
-      jiraConfig={mergedConfig}
-      selectedProject={selectedProject}
-      onChangeProject={handleChangeProject}
-    />
+    <AppProvider>
+      <Routes>
+        <Route path="/login" element={<LoginRoute />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/connect" element={<ConnectRoute />} />
+        <Route path="/projects" element={<ProjectsRoute />} />
+        <Route path="/query" element={<QueryRoute />} />
+        <Route path="/dashboard" element={<DashboardRoute />} />
+        <Route path="/dashboard/:tab" element={<DashboardRoute />} />
+        <Route path="/weekly-planner" element={<WeeklyPlannerRoute />} />
+      </Routes>
+    </AppProvider>
   );
 }

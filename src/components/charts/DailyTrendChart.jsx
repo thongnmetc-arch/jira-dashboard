@@ -12,18 +12,20 @@ import {
   Filler,
 } from 'chart.js';
 import { useMemo } from 'react';
+import { useI18n } from '../../i18n';
 import { toDateStr } from '../../utils/dateUtils';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler);
 
 export default function DailyTrendChart({ tasks }) {
+  const { t } = useI18n();
   const chartData = useMemo(() => {
     const daily = {};
-    tasks.forEach(t => {
-      const d = t.resolved || t.created;
+    tasks.forEach(task => {
+      const d = task.resolved || task.created;
       if (!d) return;
       const key = toDateStr(d);
-      daily[key] = (daily[key] || 0) + t.timeSpentHr;
+      daily[key] = (daily[key] || 0) + task.timeSpentHr;
     });
 
     const sorted = Object.entries(daily).sort((a, b) => {
@@ -42,7 +44,7 @@ export default function DailyTrendChart({ tasks }) {
       labels,
       datasets: [
         {
-          label: 'Giờ theo ngày',
+          label: t('table.hoursLogged'),
           data,
           backgroundColor: 'rgba(91,106,240,.55)',
           borderColor: '#5b6af0',
@@ -51,7 +53,7 @@ export default function DailyTrendChart({ tasks }) {
           order: 1,
         },
         {
-          label: 'Lũy kế',
+          label: t('stats.overview'),
           data: cumData,
           type: 'line',
           borderColor: '#f59e0b',
@@ -65,7 +67,7 @@ export default function DailyTrendChart({ tasks }) {
         },
       ],
     };
-  }, [tasks]);
+  }, [tasks, t]);
 
   const options = {
     responsive: true,
@@ -82,7 +84,7 @@ export default function DailyTrendChart({ tasks }) {
       x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 45 } },
       y: {
         beginAtZero: true,
-        title: { display: true, text: 'Giờ', font: { size: 11 } },
+        title: { display: true, text: t('common.hours'), font: { size: 11 } },
         ticks: { font: { size: 10 }, callback: (v) => v + 'h' },
       },
     },
@@ -91,7 +93,7 @@ export default function DailyTrendChart({ tasks }) {
   return (
     <div className="card chart-card">
       <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
-        Xu hướng theo ngày
+        {t('tabs.overview')}
       </h3>
       <div className="relative h-[300px]">
         <Bar data={chartData} options={options} />

@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Plus,
   Trash2,
   Save,
@@ -14,6 +15,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useI18n } from '../i18n';
 import { logMultipleWorklogs } from '../utils/jiraWorklog';
 import { fetchJiraIssues } from '../utils/jiraApi';
 
@@ -102,17 +104,70 @@ function createWeekPlan() {
   return { Mon: createDayPlan(), Tue: createDayPlan(), Wed: createDayPlan(), Thu: createDayPlan(), Fri: createDayPlan() };
 }
 
+// ── Custom dropdown ─────────────────────────────────────────────────────────
+
+function Dropdown({ value, onChange, options, className }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const hasValue = value !== '' && value !== undefined && value !== null;
+  const selected = options.find(o => o.value === value);
+  const displayLabel = selected ? selected.label : '';
+
+  return (
+    <div ref={ref} className="relative flex-shrink-0">
+      <button
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-1.5 px-2.5 h-8 rounded-lg text-xs font-medium transition-colors border cursor-pointer ${
+          hasValue
+            ? 'border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]'
+            : 'border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:border-[var(--accent)]/50'
+        } ${className || ''}`}
+      >
+        <span className="max-w-[60px] truncate">{displayLabel}</span>
+        <ChevronDown className={`w-3 h-3 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 w-28 max-h-60 overflow-y-auto bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-xl shadow-xl py-1">
+          {options.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-[var(--bg-secondary)] cursor-pointer ${
+                value === opt.value
+                  ? 'text-[var(--accent)] font-medium bg-[var(--accent-light)]'
+                  : 'text-[var(--text-primary)]'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Task Card ───────────────────────────────────────────────────────────────
 
 function TaskCard({ task, day, dayDate, weekKey, onUpdate, onDelete, onLogOne }) {
+  const { t } = useI18n();
   const [editing, setEditing] = useState(false);
 
   const logStatusIcon = task.logged ? (
-    <CheckCircle2 className="w-3 h-3 text-[var(--success)]" title="Đã log" />
+    <CheckCircle2 className="w-3 h-3 text-[var(--success)]" title={t('planner.logged')} />
   ) : task.logError ? (
     <AlertCircle className="w-3 h-3 text-[var(--danger)]" title={task.logError} />
   ) : task.jiraKey ? (
-    <Clock className="w-3 h-3 text-[var(--text-tertiary)]" title="Chưa log" />
+    <Clock className="w-3 h-3 text-[var(--text-tertiary)]" title={t('planner.logToJira')} />
   ) : null;
 
   return (
@@ -130,13 +185,13 @@ function TaskCard({ task, day, dayDate, weekKey, onUpdate, onDelete, onLogOne })
           type="text"
           value={task.name}
           onChange={(e) => onUpdate(day, task.id, { name: e.target.value })}
-          placeholder="Tên công việc..."
+          placeholder={t('planner.addTask') + '...'}
           className="flex-1 text-xs font-medium bg-transparent border-none outline-none p-0 text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
         />
         <button
           onClick={() => onDelete(day, task.id)}
           className="opacity-0 group-hover:opacity-100 text-[var(--text-tertiary)] hover:text-[var(--danger)] transition-all p-0.5 cursor-pointer"
-          title="Xoá"
+          title={t('common.delete')}
         >
           <Trash2 className="w-3 h-3" />
         </button>
@@ -146,15 +201,11 @@ function TaskCard({ task, day, dayDate, weekKey, onUpdate, onDelete, onLogOne })
       <div className="flex items-center gap-2">
         {/* Hours */}
         <div className="flex items-center gap-1">
-          <select
-            value={task.hours}
-            onChange={(e) => onUpdate(day, task.id, { hours: parseFloat(e.target.value) })}
-            className="text-[11px] bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded px-1 py-0.5 w-14 text-center outline-none text-[var(--text-primary)]"
-          >
-            {[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8].map(h => (
-              <option key={h} value={h}>{h}h</option>
-            ))}
-          </select>
+          <Dropdown
+            value={String(task.hours)}
+            onChange={(val) => onUpdate(day, task.id, { hours: parseFloat(val) })}
+            options={[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8].map(h => ({ value: String(h), label: h + 'h' }))}
+          />
         </div>
 
         {/* JIRA key */}
@@ -176,6 +227,7 @@ function TaskCard({ task, day, dayDate, weekKey, onUpdate, onDelete, onLogOne })
 // ── Day Column ──────────────────────────────────────────────────────────────
 
 function DayColumn({ day, dayDate, tasks, weekKey, onUpdate, onDelete, onAdd }) {
+  const { t } = useI18n();
   const dayTotal = tasks.reduce((s, t) => s + (t.hours || 0), 0);
   const dateStr = formatDate(dayDate);
   const isOver = dayTotal > MAX_HOURS_PER_DAY;
@@ -209,7 +261,7 @@ function DayColumn({ day, dayDate, tasks, weekKey, onUpdate, onDelete, onAdd }) 
 
         {tasks.length === 0 && (
           <div className="text-center py-6 text-[11px] text-[var(--text-tertiary)]">
-            Chưa có công việc
+            {t('planner.noTasks')}
           </div>
         )}
       </div>
@@ -221,7 +273,7 @@ function DayColumn({ day, dayDate, tasks, weekKey, onUpdate, onDelete, onAdd }) 
           className="w-full flex items-center justify-center gap-1 py-1.5 text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--accent-light)] rounded-md transition-colors cursor-pointer"
         >
           <Plus className="w-3 h-3" />
-          <span>Thêm</span>
+          <span>{t('planner.addTask')}</span>
         </button>
       </div>
     </div>
@@ -231,6 +283,7 @@ function DayColumn({ day, dayDate, tasks, weekKey, onUpdate, onDelete, onAdd }) 
 // ── Weekly Planner ──────────────────────────────────────────────────────────
 
 export default function WeeklyPlanner() {
+  const { t } = useI18n();
   const { state, dispatch } = useApp();
 
   // Current week's Monday
@@ -253,6 +306,7 @@ export default function WeeklyPlanner() {
       setPlan(saved);
     } else {
       setPlan(createWeekPlan());
+      loadJiraTasks();
     }
     setLogResults(null);
     setSaveMessage('');
@@ -263,10 +317,6 @@ export default function WeeklyPlanner() {
   const loadJiraTasks = useCallback(async (force = false) => {
     const { url, assignee, token, projectKey, jql } = state.jiraConfig || {};
     if (!url || !token || !projectKey) return;
-
-    // Only auto-load for current week
-    const isCurrent = getMonday(new Date()).getTime() === monday.getTime();
-    if (!isCurrent) return;
 
     // Auto-load: skip if we already have a saved plan with data (unless forced)
     if (!force) {
@@ -291,7 +341,7 @@ export default function WeeklyPlanner() {
       } else if (!queryJql.trim()) {
         queryJql = `project = "${projectKey}" ORDER BY created DESC`;
       }
-      const tasks = await fetchJiraIssues(url, token, projectKey, '', queryJql);
+      const tasks = await fetchJiraIssues(url, token, projectKey, assignee || '', queryJql);
 
       // Filter to this week's date range
       const weekStart = new Date(monday);
@@ -299,7 +349,8 @@ export default function WeeklyPlanner() {
       weekEnd.setDate(weekEnd.getDate() + 5);
 
       const weekTasks = tasks.filter(t => {
-        const d = t.startDate || t.created || t.resolved;
+        if (t.status?.toLowerCase() === 'cancelled') return false;
+        const d = t.dueDate || t.resolved || t.startDate;
         if (!d) return false;
         const dt = new Date(d);
         return dt >= weekStart && dt < weekEnd;
@@ -308,7 +359,7 @@ export default function WeeklyPlanner() {
       // Distribute to days
       const newPlan = createWeekPlan();
       weekTasks.forEach(t => {
-        const d = t.startDate || t.created || t.resolved;
+        const d = t.dueDate || t.resolved || t.startDate;
         if (!d) return;
         const dt = new Date(d);
         const dayIndex = dt.getDay() - 1; // 0=Mon, 4=Fri
@@ -344,10 +395,6 @@ export default function WeeklyPlanner() {
     }
   }, [state.jiraConfig, monday, weekKey]);
 
-  // Auto-load JIRA tasks on mount and when config/week changes
-  useEffect(() => {
-    loadJiraTasks();
-  }, [loadJiraTasks]);
 
   // Navigate weeks
   const goPrevWeek = useCallback(() => {
@@ -395,16 +442,16 @@ export default function WeeklyPlanner() {
 
   const handleSave = useCallback(() => {
     savePlan(weekKey, plan);
-    setSaveMessage('Đã lưu!');
+    setSaveMessage(t('planner.logged'));
     setTimeout(() => setSaveMessage(''), 2000);
-  }, [weekKey, plan]);
+  }, [weekKey, plan, t]);
 
   // ── Log to JIRA ──
 
   const handleLogAll = useCallback(async () => {
     const { url, token } = state.jiraConfig;
     if (!url || !token) {
-      setLogResults({ success: [], failed: [{ issueKey: '', error: 'Chưa kết nối JIRA. Vui lòng kết nối trước.' }] });
+      setLogResults({ success: [], failed: [{ issueKey: '', error: t('planner.error') + '. ' + t('connect.title') }] });
       return;
     }
 
@@ -432,7 +479,7 @@ export default function WeeklyPlanner() {
     }
 
     if (entries.length === 0) {
-      setLogResults({ success: [], failed: [{ issueKey: '', error: 'Không có công việc nào cần log (có JIRA key và chưa được log).' }] });
+      setLogResults({ success: [], failed: [{ issueKey: '', error: t('planner.noTasks') }] });
       return;
     }
 
@@ -465,11 +512,11 @@ export default function WeeklyPlanner() {
 
       setLogResults(result);
     } catch (err) {
-      setLogResults({ success: [], failed: [{ issueKey: '', error: err.message || 'Lỗi không xác định' }] });
+      setLogResults({ success: [], failed: [{ issueKey: '', error: err.message || t('common.error') }] });
     } finally {
       setLogging(false);
     }
-  }, [plan, monday, state.jiraConfig]);
+  }, [plan, monday, state.jiraConfig, t]);
 
   // ── Computed totals ──
 
@@ -497,13 +544,13 @@ export default function WeeklyPlanner() {
       {/* ── Header: Week navigation ── */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
-          <h2 className="text-base font-bold text-[var(--text-primary)]">📅 Lên lịch tuần</h2>
+          <h2 className="text-base font-bold text-[var(--text-primary)]">{t('planner.title')}</h2>
 
           <div className="flex items-center gap-1">
             <button
               onClick={goPrevWeek}
               className="p-1.5 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--accent)] transition-colors cursor-pointer"
-              title="Tuần trước"
+              title={t('planner.logToJira')}
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -522,7 +569,7 @@ export default function WeeklyPlanner() {
             <button
               onClick={goNextWeek}
               className="p-1.5 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--accent)] transition-colors cursor-pointer"
-              title="Tuần sau"
+              title={t('planner.logToJira')}
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -531,7 +578,7 @@ export default function WeeklyPlanner() {
 
         <div className="flex items-center gap-2">
           <span className="text-xs text-[var(--text-secondary)]">
-            Tổng: <strong className="text-[var(--text-primary)]">{totalHours.toFixed(1)}h</strong> / {TARGET_WEEKLY_HOURS}h
+            {t('planner.target')}: <strong className="text-[var(--text-primary)]">{totalHours.toFixed(1)}h</strong> / {TARGET_WEEKLY_HOURS}h
           </span>
           <div className="w-24 h-2 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
             <motion.div
@@ -546,16 +593,16 @@ export default function WeeklyPlanner() {
         {/* JIRA actions */}
         <div className="flex items-center gap-2">
           {!state.jiraConfig?.url || !state.jiraConfig?.token ? (
-            <span className="text-[11px] text-[var(--text-tertiary)] italic">Chưa có kết nối JIRA</span>
+            <span className="text-[11px] text-[var(--text-tertiary)] italic">{t('planner.error')}</span>
           ) : (
             <button
               onClick={() => loadJiraTasks(true)}
               disabled={loadingJira}
               className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border-primary)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-              title="Tải công việc từ JIRA"
+              title={t('planner.logToJira')}
             >
               {loadingJira ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-              Tải từ JIRA
+              {t('planner.addTask')}
             </button>
           )}
         </div>
@@ -592,11 +639,11 @@ export default function WeeklyPlanner() {
           }`}
         >
           {logResults.success.length > 0 && (
-            <p>✅ Đã log {logResults.success.length} công việc thành công.</p>
+            <p>{t('planner.logged')} {logResults.success.length} {t('planner.hours')}</p>
           )}
           {logResults.failed.length > 0 && (
             <div className="mt-1">
-              <p className="font-medium">❌ {logResults.failed.length} công việc thất bại:</p>
+              <p className="font-medium">{t('common.error')}: {logResults.failed.length}</p>
               <ul className="list-disc list-inside mt-0.5">
                 {logResults.failed.map((f, i) => (
                   <li key={i}>
@@ -649,7 +696,7 @@ export default function WeeklyPlanner() {
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
           >
             <Save className="w-3.5 h-3.5" />
-            <span>Lưu</span>
+            <span>{t('planner.save')}</span>
           </button>
 
           {/* Log to JIRA button */}
@@ -661,12 +708,12 @@ export default function WeeklyPlanner() {
             {logging ? (
               <>
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>Đang log...</span>
+                <span>{t('planner.logging')}</span>
               </>
             ) : (
               <>
                 <Send className="w-3.5 h-3.5" />
-                <span>Log tuần này lên JIRA</span>
+                <span>{t('planner.logToJira')}</span>
               </>
             )}
           </button>

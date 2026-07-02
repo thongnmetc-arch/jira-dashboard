@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Bookmark, Copy } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useI18n } from '../i18n';
 
 function getBookmarkletCode(projectKey, jql, dashboardUrl) {
   // Use custom JQL if provided, otherwise default
@@ -77,6 +78,7 @@ function fallbackCopy(text) {
 }
 
 export default function BookmarkletPanel() {
+  const { t } = useI18n();
   const { state, dispatch } = useApp();
   const [copied, setCopied] = useState(false);
   const [jql, setJql] = useState(state.jiraConfig.jql || '');
@@ -114,7 +116,7 @@ export default function BookmarkletPanel() {
               <div className="flex items-center gap-2">
                 <Bookmark className="w-4 h-4 text-[var(--accent)]" />
                 <h2 className="text-sm font-semibold text-[var(--text-primary)]">
-                  Bookmarklet
+                  {t('bookmarklet.title')}
                 </h2>
               </div>
               <button
@@ -129,19 +131,18 @@ export default function BookmarkletPanel() {
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
               {/* Intro */}
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-semibold text-[var(--text-secondary)]">Không cần API Token</span>
-                <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">Làm 1 lần</span>
+                <span className="text-sm font-semibold text-[var(--text-secondary)]">{t('bookmarklet.noToken')}</span>
+                <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">{t('bookmarklet.oneTime')}</span>
               </div>
 
               <p className="text-xs text-[var(--text-tertiary)]">
-                Tạo 1 bookmark trên thanh trình duyệt. Mỗi lần cần: <strong>mở JIRA → click bookmark → Dashboard tự mở</strong>.
-                Dùng cookie đăng nhập sẵn — không cần quyền admin, không cần API token.
+                {t('bookmarklet.intro')}
               </p>
 
               {/* JQL (tùy chọn) */}
               <div className="mb-1">
                 <label className="text-xs font-medium text-[var(--text-secondary)] block mb-1">
-                  JQL (tùy chọn)
+                  {t('bookmarklet.jqlOptional')}
                 </label>
                 <input
                   type="text"
@@ -150,13 +151,13 @@ export default function BookmarkletPanel() {
                   placeholder='VD: project = "BXDBE" AND status != Cancelled ORDER BY created DESC'
                   className="w-full text-xs bg-white dark:bg-slate-900 border border-[var(--border-primary)] rounded-lg px-3 py-2 focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]"
                 />
-                <p className="text-[10px] text-[var(--text-tertiary)] mt-1">Để trống để dùng JQL mặc định.</p>
+                <p className="text-[10px] text-[var(--text-tertiary)] mt-1">{t('bookmarklet.jqlDefault')}</p>
               </div>
 
               {/* Step 1: Copy code */}
               <div className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-lg p-4">
                 <p className="text-sm font-semibold text-green-800 dark:text-green-300 mb-2">
-                  Bước 1: Copy đoạn code này
+                  {t('bookmarklet.step1')}
                 </p>
                 <div className="relative">
                   <textarea
@@ -175,7 +176,7 @@ export default function BookmarkletPanel() {
                     }}
                     className="absolute top-2 right-2 text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition-colors font-medium cursor-pointer"
                   >
-                    {copied ? 'Đã copy!' : 'Copy'}
+                    {copied ? t('bookmarklet.copied') : t('bookmarklet.copy')}
                   </button>
                 </div>
               </div>
@@ -183,32 +184,30 @@ export default function BookmarkletPanel() {
               {/* Step 2: Create bookmark */}
               <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                 <p className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-2">
-                  Bước 2: Tạo bookmark
+                  {t('bookmarklet.step2')}
                 </p>
                 <ol className="list-decimal pl-4 space-y-2 text-xs text-blue-700 dark:text-blue-400">
-                  <li>Nhấn <kbd className="bg-white dark:bg-blue-900 px-1.5 py-0.5 rounded border text-xs font-mono">Ctrl+Shift+B</kbd> để hiện thanh bookmark</li>
-                  <li><strong>Click chuột phải</strong> vào thanh bookmark → chọn <strong>"Thêm trang..."</strong></li>
-                  <li>Ô <strong>Tên</strong>: điền <code className="bg-white dark:bg-blue-900 px-1 rounded">JIRA Sync</code></li>
-                  <li>Ô <strong>URL</strong>: <strong>paste</strong> đoạn code đã copy ở Bước 1</li>
-                  <li>Nhấn <strong>Lưu</strong></li>
+                  <li>{t('bookmarklet.step2')}</li>
+                  <li>{t('bookmarklet.step1')}</li>
+                  <li>{t('bookmarklet.step3')}</li>
                 </ol>
               </div>
 
               {/* Step 3: Use */}
               <div className="bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
                 <p className="text-sm font-semibold text-purple-800 dark:text-purple-300 mb-2">
-                  Bước 3: Dùng hàng ngày
+                  {t('bookmarklet.step3')}
                 </p>
                 <ol className="list-decimal pl-4 space-y-1 text-xs text-purple-700 dark:text-purple-400">
-                  <li>Mở <strong>tab JIRA</strong> (đã đăng nhập)</li>
-                  <li><strong>Click JIRA Sync</strong> trên thanh bookmark</li>
-                  <li>Dashboard <strong>tự động mở</strong> trong tab mới với dữ liệu!</li>
+                  <li>{t('bookmarklet.step2')}</li>
+                  <li>{t('bookmarklet.step3')}</li>
+                  <li>{t('bookmarklet.title')}</li>
                 </ol>
               </div>
 
               <div className="text-xs text-[var(--text-tertiary)] flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                Đang chờ dữ liệu từ JIRA...
+                {t('bookmarklet.intro')}
               </div>
             </div>
           </motion.div>

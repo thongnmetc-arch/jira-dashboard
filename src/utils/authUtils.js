@@ -17,6 +17,9 @@ const DEFAULT_PASSWORD = '123456aA@';
  * Returns a lowercase hex string.
  */
 export async function hashPassword(password) {
+  // crypto.subtle requires secure context (HTTPS/localhost) — fallback on HTTP
+  if (!crypto.subtle) return password;
+
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);

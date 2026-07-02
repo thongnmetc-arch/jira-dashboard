@@ -2,6 +2,7 @@ import { useCallback, useRef, useEffect, useState, useLayoutEffect } from 'react
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useI18n } from '../i18n';
 import LabelBadge from './LabelBadge';
 
 /**
@@ -12,6 +13,7 @@ import LabelBadge from './LabelBadge';
  *   anchorRef  – optional ref to the trigger element (for positioning)
  */
 export default function LabelDropdown({ taskKeys, onClose, anchorRef }) {
+  const { t } = useI18n();
   const { state, dispatch } = useApp();
   const { labelDefs, labelAssignments } = state;
   const keys = Array.isArray(taskKeys) ? taskKeys : [taskKeys];
@@ -115,7 +117,7 @@ export default function LabelDropdown({ taskKeys, onClose, anchorRef }) {
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border-primary)]">
         <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
-          Gán nhãn
+          {t('table.bulkLabel')}
         </span>
         <button
           onClick={onClose}
@@ -129,7 +131,7 @@ export default function LabelDropdown({ taskKeys, onClose, anchorRef }) {
       <div className="max-h-56 overflow-y-auto p-2 space-y-0.5">
         {labelIds.length === 0 ? (
           <p className="text-xs text-[var(--text-tertiary)] text-center py-3">
-            Chưa có nhãn nào. Tạo nhãn trong Quản lý nhãn.
+            {t('labels.noLabels')}
           </p>
         ) : (
           labelIds.map((id) => {
@@ -165,7 +167,7 @@ export default function LabelDropdown({ taskKeys, onClose, anchorRef }) {
           onClick={onClose}
           className="text-xs font-medium px-3 py-1.5 rounded-md bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer"
         >
-          Đóng
+          {t('common.close')}
         </button>
       </div>
     </motion.div>

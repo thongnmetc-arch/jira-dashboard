@@ -1,0 +1,38 @@
+const vi = {
+  // Login
+  login: { title: 'Đăng nhập', username: 'Tài khoản', password: 'Mật khẩu', loginBtn: 'Đăng nhập', remember: 'Ghi nhớ đăng nhập', forgot: 'Quên mật khẩu?', error: 'Sai tài khoản hoặc mật khẩu', setup: 'Thiết lập mật khẩu', setupBtn: 'Thiết lập', setupLink: 'Thiết lập mật khẩu lần đầu', newPassword: 'Mật khẩu mới', confirmPassword: 'Xác nhận mật khẩu', accountName: 'Tên tài khoản', backToLogin: 'Quay lại đăng nhập', lockoutTitle: 'Tạm khóa', lockoutMsg: 'Quá nhiều lần thử sai. Vui lòng thử lại sau.', errorRequired: 'Vui lòng nhập tài khoản', errorPasswordLength: 'Mật khẩu phải có ít nhất 4 ký tự', errorPasswordMatch: 'Mật khẩu xác nhận không khớp', errorSetup: 'Lỗi khi thiết lập. Vui lòng thử lại.', errorAuth: 'Lỗi xác thực. Vui lòng thử lại.', errorTooMany: 'Quá nhiều lần thử sai. Vui lòng thử lại sau 30 phút.', errorAttempt: 'Sai tài khoản hoặc mật khẩu (còn {n} lần)', showPassword: 'Hiện mật khẩu', hidePassword: 'Ẩn mật khẩu', tagline: 'Theo dõi thời gian làm việc — Trực quan & Hiệu quả', feature1: 'Phân tích dữ liệu JIRA với 5+ biểu đồ trực quan', feature2: 'Quản lý nhãn thông minh, tự động phân loại công việc', feature3: 'Lưu & so sánh lịch sử phân tích theo thời gian', feature4: 'Ứng dụng desktop — Không cần trình duyệt' },
+  // Sidebar
+  sidebar: { overview: 'Tổng quan', data: 'Dữ liệu', burndown: 'Burndown', monthCompare: 'So sánh tháng', report: 'Báo cáo', ot: 'OT & Nghỉ phép', labels: 'Quản lý nhãn', history: 'Lịch sử', bookmarklet: 'Bookmarklet', connect: 'Kết nối JIRA', weeklyPlanner: 'Lên lịch tuần', expand: 'Mở rộng', collapse: 'Thu gọn' },
+  // Dashboard
+  dashboard: { title: 'JIRA Dashboard', loading: 'Đang tải...', noData: 'Chưa có dữ liệu', refresh: 'Làm mới', autoRefresh: 'Tự động', backToTop: 'Lên đầu trang', lastUpdate: 'Cập nhật lần cuối:', updating: 'Đang cập nhật...', source: 'Nguồn:', jiraApi: 'JIRA API', bookmark: 'JIRA Bookmark', htmlExport: 'HTML Export', historySource: 'Lịch sử', csvSource: 'File', refreshError: 'Tự động cập nhật thất bại:', manualRefreshError: 'Cập nhật thất bại:', noTasksFound: 'Không tìm thấy công việc nào.', taskCount: 'công việc', logged: 'đã log', changeProject: 'Đổi dự án', manualRefresh: 'Cập nhật thủ công', otPrefix: 'Tăng ca: +', leavePrefix: 'Nghỉ phép: -', overduePrefix: 'task chưa được đóng', overdueMore: 'và', otherTask: 'task khác', off: 'Tắt', min5: '5 phút', min15: '15 phút', min30: '30 phút', hour1: '1 giờ' },
+  // Stats
+  stats: { totalTasks: 'Tổng số công việc', totalHours: 'Tổng giờ đã log', totalEstimate: 'Tổng giờ ước tính', avgPerTask: 'Thời gian TB mỗi task', effort: 'Effort', effortMonth: 'Effort tháng', effortAvg: 'Effort TB', overview: 'Tổng quan', currentMonth: 'Tháng hiện tại', allStatuses: 'tất cả trạng thái', above: '✅ Vượt', below: '⚠️ Thiếu', sufficient: '✅ Đủ', avgDetail: 'Trung bình ({n} tháng)', effortWarning: '⚠️ Effort > 1 — kiểm tra lại xem đã log đủ task chưa' },
+  // Filter
+  filter: { sprint: 'Sprint', component: 'Phân hệ', assignee: 'Người thực hiện', fromDate: 'Từ ngày', toDate: 'Đến ngày', reset: 'Xóa bộ lọc', all: 'Tất cả', allSprints: 'Tất cả Sprint', allComponents: 'Tất cả phân hệ', clearAll: 'Xóa tất cả bộ lọc' },
+  // DataTable
+  table: { key: 'Issue Key', summary: 'Tóm tắt', component: 'Phân hệ', sprint: 'Sprint', assignee: 'Người thực hiện', hoursLogged: 'Giờ log', hoursEstimate: 'Giờ ước tính', status: 'Trạng thái', labels: 'Nhãn', search: 'Tìm kiếm...', noResults: 'Không tìm thấy kết quả', close: 'Đóng', bulkClose: 'Đóng hàng loạt', bulkLabel: 'Gán nhãn', export: 'Xuất', title: 'Bảng dữ liệu chi tiết', rows: 'dòng', page: 'Trang', selectedCount: 'Đã chọn', markDone: 'Đánh dấu đã xong', exportCsv: 'Xuất CSV', appOnly: 'Thay đổi chỉ hiển thị trong app, không đồng bộ JIRA', selectAll: 'Chọn tất cả', deselectAll: 'Bỏ chọn tất cả', bulkLabelFor: 'Gán nhãn cho' },
+  // Connect
+  connect: { title: 'Kết nối JIRA', url: 'URL JIRA', token: 'API Token', projectKey: 'Project Key', assignee: 'Email người thực hiện', jql: 'JQL', connectBtn: 'Kết nối & Tải dữ liệu', reConnect: 'Kết nối lại', connected: 'Đã kết nối', test: 'Kiểm tra kết nối', testError: 'Không thể kết nối', enterUrl: 'Vui lòng nhập URL JIRA', enterToken: 'Vui lòng nhập API Token', enterProject: 'Vui lòng nhập Project Key', optional: 'tùy chọn' },
+  // Project Selector
+  projects: { title: 'Chọn dự án', search: 'Tìm kiếm dự án...', next: 'Tiếp tục', back: 'Quay lại', loading: 'Đang tải danh sách dự án...', error: 'Không thể tải danh sách dự án', noProjects: 'Không tìm thấy dự án nào', switchProject: 'Đổi dự án', step3: 'Bước 3/4', connected: 'Đã kết nối: ', searchPlaceholder: 'Tìm kiếm dự án theo tên hoặc mã...', project: 'dự án', noMatch: 'Không tìm thấy dự án phù hợp.', enterHint: 'Nhấn Enter để chọn' },
+  // Query Config
+  query: { title: 'Cấu hình truy vấn', assigneeLabel: 'Email người thực hiện', assigneePlaceholder: 'user@company.com', jqlLabel: 'JQL (tùy chọn)', jqlPlaceholder: 'VD: status != Cancelled ORDER BY created DESC', start: 'Bắt đầu phân tích', back: 'Quay lại', step4: 'Bước 4/4', notEntered: 'Chưa nhập', emptyJql: 'Để trống JQL để lấy tất cả issues trong project.', skipAll: 'Bỏ qua, xem tất cả issues' },
+  // Weekly Planner
+  planner: { title: 'Kế hoạch tuần', addTask: 'Thêm công việc', save: 'Lưu', logToJira: 'Log lên JIRA', logging: 'Đang log...', logged: 'Đã log!', error: 'Lỗi khi log', noTasks: 'Chưa có công việc nào', hours: 'giờ', target: 'Mục tiêu' },
+  // OT Panel
+  ot: { title: 'OT & Nghỉ phép', otHours: 'Giờ OT', leaveHours: 'Giờ nghỉ phép', save: 'Lưu & Tính lại Effort', quickAdd: 'Thêm nhanh', otLabel: '⏱ Tăng ca (OT)', leaveLabel: '🏖 Nghỉ phép', totalLabel: 'Tổng:', quickAddQuarter: '+¼ ngày (1.75h)', quickAddHalf: '+½ ngày (3.5h)', quickAddOneDay: '+1 ngày (7h)', quickAddTwoDay: '+2 ngày (14h)', effortFormula: 'Effort sẽ tự động tính lại: (Ngày công × 7 + OT - Nghỉ) / Tổng giờ log', clear: 'Xóa', hoursUnit: 'giờ' },
+  // Bookmarklet
+  bookmarklet: { title: 'Bookmarklet', noToken: 'Không cần API Token', oneTime: 'Làm 1 lần', intro: 'Tạo 1 bookmark trên thanh trình duyệt', step1: 'Bước 1: Copy đoạn code này', step2: 'Bước 2: Tạo bookmark', step3: 'Bước 3: Dùng hàng ngày', copy: 'Copy', copied: 'Đã copy!', jqlOptional: 'JQL (tùy chọn)', jqlDefault: 'Để trống để dùng JQL mặc định.' },
+  // History
+  history: { title: 'Lịch sử', save: 'Lưu bản hiện tại', name: 'Tên bản lưu', compare: 'So sánh', delete: 'Xóa', restore: 'Khôi phục', storage: 'Dung lượng', noSnapshots: 'Chưa có bản lưu nào' },
+  // Labels
+  labels: { title: 'Quản lý nhãn', create: 'Tạo nhãn', name: 'Tên nhãn', color: 'Màu sắc', save: 'Lưu', delete: 'Xóa', autoRule: 'Auto-rule', noLabels: 'Chưa có nhãn nào' },
+  // Dashboard tabs
+  tabs: { overview: 'Tổng quan', charts: 'Biểu đồ', data: 'Dữ liệu', gantt: 'Gantt', compare: 'So sánh', ot: 'OT & Nghỉ phép', labels: 'Nhãn', history: 'Lịch sử' },
+  // Common
+  common: { cancel: 'Hủy', save: 'Lưu', delete: 'Xóa', close: 'Đóng', confirm: 'Xác nhận', loading: 'Đang tải...', error: 'Lỗi', success: 'Thành công', warning: 'Cảnh báo', overdue: 'task chưa được đóng', viewTable: 'Xem bảng', openMenu: 'Mở menu', file: 'File', toggleTheme: 'Đổi giao diện sáng/tối', logout: 'Đăng xuất', retry: 'Thử lại', hours: 'giờ', tasks: 'task', total: 'Tổng:', search: 'Tìm kiếm...', view: 'Xem', restore: 'Khôi phục', deleteConfirm: 'Xóa', back: 'Quay lại' },
+  // Language
+  lang: { vi: 'Tiếng Việt', en: 'English', switch: 'Đổi ngôn ngữ' },
+
+};
+export default vi;

@@ -9,16 +9,19 @@ import {
   Legend,
 } from 'chart.js';
 import { useMemo } from 'react';
+import { useI18n } from '../../i18n';
 import { getComponentColor } from '../../utils/exportUtils';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 export default function ComponentBarChart({ tasks }) {
+  const { t } = useI18n();
   const chartData = useMemo(() => {
     const groups = {};
-    tasks.forEach(t => {
-      const comps = t.comps.length > 0 ? t.comps : ['Không có'];
-      const share = t.timeSpentHr / comps.length;
+    tasks.forEach(task => {
+      const comps = task.comps;
+      if (comps.length === 0) return;
+      const share = task.timeSpentHr / comps.length;
       comps.forEach(c => {
         if (!groups[c]) groups[c] = 0;
         groups[c] += share;
@@ -32,9 +35,9 @@ export default function ComponentBarChart({ tasks }) {
 
     return {
       labels,
-      datasets: [{ label: 'Giờ', data, backgroundColor: bgColors, borderRadius: 4 }],
+      datasets: [{ label: t('common.hours'), data, backgroundColor: bgColors, borderRadius: 4 }],
     };
-  }, [tasks]);
+  }, [tasks, t]);
 
   const options = {
     indexAxis: 'y',
@@ -44,25 +47,14 @@ export default function ComponentBarChart({ tasks }) {
       legend: { display: false },
       tooltip: {
         callbacks: {
-          label: (ctx) => ctx.raw.toFixed(1) + ' giờ',
-          afterLabel: (ctx) => {
-            const orig = Object.entries(
-              tasks.reduce((acc, t) => {
-                const comps = t.comps.length > 0 ? t.comps : ['Không có'];
-                const share = t.timeSpentHr / comps.length;
-                comps.forEach(c => { acc[c] = (acc[c] || 0) + share; });
-                return acc;
-              }, {})
-            ).sort((a, b) => b[1] - a[1])[ctx.dataIndex]?.[0];
-            return orig && orig.length > 30 ? 'Phân hệ: ' + orig : '';
-          },
+          label: (ctx) => ctx.raw.toFixed(1) + ' ' + t('common.hours'),
         },
       },
     },
     scales: {
       x: {
         beginAtZero: true,
-        title: { display: true, text: 'Giờ', font: { size: 11 } },
+        title: { display: true, text: t('common.hours'), font: { size: 11 } },
         ticks: { font: { size: 10 }, callback: (v) => v + 'h' },
       },
       y: { grid: { display: false }, ticks: { font: { size: 10 } } },
@@ -72,7 +64,7 @@ export default function ComponentBarChart({ tasks }) {
   return (
     <div className="card chart-card">
       <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
-        Tổng giờ theo phân hệ
+        {t('filter.component')}
       </h3>
       <div className="relative h-[300px]">
         <Bar data={chartData} options={options} />

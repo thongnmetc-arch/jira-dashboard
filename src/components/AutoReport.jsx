@@ -2,78 +2,77 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Download, Bell, BellOff, Clock, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useI18n } from '../i18n';
 
 const REPORT_TYPES = [
-  { value: 'monthly', label: 'Tổng hợp tháng' },
-  { value: 'task-detail', label: 'Chi tiết task' },
-  { value: 'effort', label: 'Effort' },
+  { value: 'monthly', labelKey: 'stats.effortMonth' },
+  { value: 'task-detail', labelKey: 'table.title' },
+  { value: 'effort', labelKey: 'stats.effort' },
 ];
 
 const FORMATS = [
-  { value: 'csv', label: 'CSV' },
-  { value: 'json', label: 'JSON' },
+  { value: 'csv', labelKey: 'table.exportCsv' },
+  { value: 'json', labelKey: 'common.save' },
 ];
 
-function generateCSV(tasks, reportType) {
-  const headers = ['Issue Key', 'Summary', 'Phân hệ', 'Sprint', 'Người thực hiện', 'Giờ log', 'Giờ ước tính', 'Trạng thái', 'Loại', 'Mức độ ưu tiên', 'Ngày tạo', 'Ngày kết thúc'];
-  const rows = tasks.map(t => [
-    t.key, t.summary, (t.comps || []).join('; '), t.primarySprint, t.assignee,
-    (t.timeSpentHr || 0).toFixed(1), (t.estimateHr || 0).toFixed(1), t.status,
-    t.issueType || '', t.priority || '',
-    t.created ? t.created.toISOString().slice(0, 10) : '',
-    t.resolved ? t.resolved.toISOString().slice(0, 10) : '',
+function generateCSV(tasks, reportType, t) {
+  const headers = [t('table.key'), t('table.summary'), t('filter.component'), t('filter.sprint'), t('filter.assignee'), t('table.hoursLogged'), t('table.hoursEstimate'), t('table.status'), t('table.key'), t('table.key'), t('dashboard.noData'), t('dashboard.noData')];
+  const rows = tasks.map(tk => [
+    tk.key, tk.summary, (tk.comps || []).join('; '), tk.primarySprint, tk.assignee,
+    (tk.timeSpentHr || 0).toFixed(1), (tk.estimateHr || 0).toFixed(1), tk.status,
+    tk.issueType || '', tk.priority || '',
+    tk.created ? tk.created.toISOString().slice(0, 10) : '',
+    tk.resolved ? tk.resolved.toISOString().slice(0, 10) : '',
   ]);
 
   let filteredRows = rows;
   if (reportType === 'effort') {
-    // Only include key, summary, giờ log, giờ ước tính
     filteredRows = rows.map(r => [r[0], r[1], r[5], r[6]]);
-    return ['Issue Key,Summary,Giờ log,Giờ ước tính', ...filteredRows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(','))].join('\n');
+    return [t('table.key') + ',' + t('table.summary') + ',' + t('table.hoursLogged') + ',' + t('table.hoursEstimate'), ...filteredRows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(','))].join('\n');
   }
   if (reportType === 'task-detail') {
-    // Full detail
     filteredRows = rows;
   }
 
   return [headers.join(','), ...filteredRows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(','))].join('\n');
 }
 
-function generateJSON(tasks, reportType) {
+function generateJSON(tasks, reportType, t) {
   if (reportType === 'effort') {
-    return JSON.stringify(tasks.map(t => ({
-      key: t.key,
-      summary: t.summary,
-      timeSpentHr: t.timeSpentHr,
-      estimateHr: t.estimateHr,
-      effort: t.estimateHr > 0 ? (t.timeSpentHr / t.estimateHr).toFixed(2) : 0,
+    return JSON.stringify(tasks.map(tk => ({
+      key: tk.key,
+      summary: tk.summary,
+      timeSpentHr: tk.timeSpentHr,
+      estimateHr: tk.estimateHr,
+      effort: tk.estimateHr > 0 ? (tk.timeSpentHr / tk.estimateHr).toFixed(2) : 0,
     })), null, 2);
   }
   if (reportType === 'task-detail') {
-    return JSON.stringify(tasks.map(t => ({
-      key: t.key,
-      summary: t.summary,
-      status: t.status,
-      issueType: t.issueType,
-      priority: t.priority,
-      assignee: t.assignee,
-      comps: t.comps,
-      primarySprint: t.primarySprint,
-      timeSpentHr: t.timeSpentHr,
-      estimateHr: t.estimateHr,
-      created: t.created ? t.created.toISOString() : null,
-      resolved: t.resolved ? t.resolved.toISOString() : null,
+    return JSON.stringify(tasks.map(tk => ({
+      key: tk.key,
+      summary: tk.summary,
+      status: tk.status,
+      issueType: tk.issueType,
+      priority: tk.priority,
+      assignee: tk.assignee,
+      comps: tk.comps,
+      primarySprint: tk.primarySprint,
+      timeSpentHr: tk.timeSpentHr,
+      estimateHr: tk.estimateHr,
+      created: tk.created ? tk.created.toISOString() : null,
+      resolved: tk.resolved ? tk.resolved.toISOString() : null,
     })), null, 2);
   }
   // monthly summary
   const monthMap = {};
-  tasks.forEach(t => {
-    const d = t.resolved || t.created;
+  tasks.forEach(tk => {
+    const d = tk.resolved || tk.created;
     if (!d) return;
     const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
     if (!monthMap[key]) monthMap[key] = { taskCount: 0, totalHours: 0, totalEstimate: 0 };
     monthMap[key].taskCount += 1;
-    monthMap[key].totalHours += t.timeSpentHr || 0;
-    monthMap[key].totalEstimate += t.estimateHr || 0;
+    monthMap[key].totalHours += tk.timeSpentHr || 0;
+    monthMap[key].totalEstimate += tk.estimateHr || 0;
   });
   return JSON.stringify(monthMap, null, 2);
 }
@@ -91,6 +90,7 @@ function downloadFile(content, filename, mimeType) {
 }
 
 export default function AutoReport() {
+  const { t } = useI18n();
   const { state } = useApp();
   const [reportType, setReportType] = useState('monthly');
   const [format, setFormat] = useState('csv');
@@ -125,11 +125,11 @@ export default function AutoReport() {
     let mimeType;
 
     if (format === 'csv') {
-      content = generateCSV(tasks, reportType);
+      content = generateCSV(tasks, reportType, t);
       filename = `jira-report-${reportType}-${dateStr}.csv`;
       mimeType = 'text/csv';
     } else {
-      content = generateJSON(tasks, reportType);
+      content = generateJSON(tasks, reportType, t);
       filename = `jira-report-${reportType}-${dateStr}.json`;
       mimeType = 'application/json';
     }
@@ -147,7 +147,7 @@ export default function AutoReport() {
     if (reminderEnabled && Notification.permission === 'default') {
       Notification.requestPermission();
     }
-  }, [state.allTasks, reportType, format, reminderEnabled]);
+  }, [state.allTasks, reportType, format, reminderEnabled, t]);
 
   const toggleReminder = () => {
     const next = !reminderEnabled;
@@ -162,7 +162,7 @@ export default function AutoReport() {
       // In a real app, use service worker; for this demo we store the preference
       if (Notification.permission === 'granted') {
         new Notification('JIRA Dashboard', {
-          body: 'Nhắc nhở: Đã đến lúc tạo báo cáo cuối tuần!',
+          body: t('planner.logToJira'),
         });
       }
     }
@@ -177,7 +177,7 @@ export default function AutoReport() {
       if (now.getDay() === 5 && now.getHours() >= 9 && now.getHours() <= 17) {
         if (Notification.permission === 'granted') {
           new Notification('JIRA Dashboard', {
-            body: 'Nhắc nhở: Hôm nay là thứ 6 — hãy tạo báo cáo cuối tuần!',
+            body: t('planner.logToJira'),
           });
         }
       }
@@ -207,7 +207,7 @@ export default function AutoReport() {
         window.__reportReminderInterval = null;
       }
     };
-  }, [reminderEnabled]);
+  }, [reminderEnabled, t]);
 
   return (
     <motion.div
@@ -219,7 +219,7 @@ export default function AutoReport() {
       <div className="flex items-center gap-2 mb-3 pb-2 border-b border-[var(--border-primary)]">
         <Download className="w-4 h-4 text-[var(--accent)]" />
         <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-          Báo cáo tự động
+          {t('planner.target')}
         </h3>
       </div>
 
@@ -227,7 +227,7 @@ export default function AutoReport() {
         {/* Report type */}
         <div>
           <label className="block text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1.5">
-            Loại báo cáo
+            {t('stats.effortMonth')}
           </label>
           <div className="flex gap-2 flex-wrap">
             {REPORT_TYPES.map(rt => (
@@ -240,7 +240,7 @@ export default function AutoReport() {
                     : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)]'
                 }`}
               >
-                {rt.label}
+                {t(rt.labelKey)}
               </button>
             ))}
           </div>
@@ -249,7 +249,7 @@ export default function AutoReport() {
         {/* Format */}
         <div>
           <label className="block text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1.5">
-            Định dạng
+            {t('table.export')}
           </label>
           <div className="flex gap-2">
             {FORMATS.map(f => (
@@ -262,7 +262,7 @@ export default function AutoReport() {
                     : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)]'
                 }`}
               >
-                {f.label}
+                {t(f.labelKey)}
               </button>
             ))}
           </div>
@@ -271,7 +271,7 @@ export default function AutoReport() {
         {/* File location hint */}
         <div className="flex items-center gap-2 text-xs text-[var(--text-tertiary)] bg-[var(--bg-secondary)] rounded-lg px-3 py-2">
           <Download className="w-3.5 h-3.5 flex-shrink-0" />
-          <span>File sẽ được tải về thư mục Downloads</span>
+          <span>{t('common.file')}</span>
         </div>
 
         {/* Generate button */}
@@ -283,12 +283,12 @@ export default function AutoReport() {
           {showSuccess ? (
             <>
               <CheckCircle2 className="w-4 h-4" />
-              Đã tạo báo cáo!
+              {t('planner.logged')}
             </>
           ) : (
             <>
               <Download className="w-4 h-4" />
-              Tạo báo cáo ngay
+              {t('planner.save')}
             </>
           )}
         </button>
@@ -297,7 +297,7 @@ export default function AutoReport() {
         {lastReportDate && (
           <div className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)]">
             <Clock className="w-3 h-3" />
-            <span>Báo cáo gần nhất: <strong>{lastReportDate}</strong></span>
+            <span>{t('dashboard.lastUpdate')} <strong>{lastReportDate}</strong></span>
           </div>
         )}
 
@@ -308,7 +308,7 @@ export default function AutoReport() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
-              Lên lịch nhắc nhở
+              {t('planner.save')}
             </label>
             <button
               onClick={toggleReminder}
@@ -321,26 +321,26 @@ export default function AutoReport() {
               {reminderEnabled ? (
                 <>
                   <Bell className="w-3.5 h-3.5" />
-                  Đã bật
+                  {t('planner.logged')}
                 </>
               ) : (
                 <>
                   <BellOff className="w-3.5 h-3.5" />
-                  Tắt
+                  {t('common.close')}
                 </>
               )}
             </button>
           </div>
           <p className="text-xs text-[var(--text-tertiary)]">
             {reminderEnabled
-              ? 'Nhắc tôi tạo báo cáo mỗi thứ 6. Bạn sẽ nhận được thông báo trong giờ làm việc.'
-              : 'Bật để nhận nhắc nhở tạo báo cáo vào mỗi thứ 6 hàng tuần.'}
+              ? t('planner.logToJira')
+              : t('planner.noTasks')}
           </p>
         </div>
 
         {/* Note */}
         <p className="text-[11px] text-[var(--text-tertiary)] italic">
-          File được tải trực tiếp về máy, không cần kết nối email hay máy chủ.
+          {t('common.file')}
         </p>
       </div>
     </motion.div>

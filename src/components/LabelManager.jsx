@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Tag, X, Pencil, Trash2, Plus, Check } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useI18n } from '../i18n';
 import LabelBadge from './LabelBadge';
 import RuleEditor from './RuleEditor';
 import { generateLabelId, PRESET_COLORS } from '../utils/labelUtils';
@@ -14,6 +15,7 @@ import { generateLabelId, PRESET_COLORS } from '../utils/labelUtils';
  * Mirrors OTPanel.jsx drawer pattern exactly.
  */
 export default function LabelManager() {
+  const { t } = useI18n();
   const { state, dispatch } = useApp();
   const { labelDefs, labelAssignments, autoRules, labelPanelOpen } = state;
 
@@ -148,7 +150,7 @@ export default function LabelManager() {
               <div className="flex items-center gap-2">
                 <Tag className="w-4 h-4 text-[var(--accent)]" />
                 <h2 className="text-sm font-semibold text-[var(--text-primary)]">
-                  Quản lý nhãn
+                  {t('labels.title')}
                 </h2>
               </div>
               <button
@@ -166,7 +168,7 @@ export default function LabelManager() {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
-                    Danh sách nhãn
+                    {t('labels.title')}
                   </h3>
                   {!editId && (
                     <button
@@ -174,14 +176,14 @@ export default function LabelManager() {
                       className="flex items-center gap-1 text-xs font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors cursor-pointer"
                     >
                       <Plus className="w-3 h-3" />
-                      Tạo nhãn
+                      {t('labels.create')}
                     </button>
                   )}
                 </div>
 
                 {Object.keys(labelDefs || {}).length === 0 && !editId ? (
                   <p className="text-xs text-[var(--text-tertiary)] py-4 text-center">
-                    Chưa có nhãn nào. Nhấn "Tạo nhãn" để bắt đầu.
+                    {t('labels.noLabels')}. {t('labels.create')}.
                   </p>
                 ) : (
                   <div className="space-y-1.5">
@@ -197,19 +199,19 @@ export default function LabelManager() {
                           {def.name}
                         </span>
                         <span className="text-[10px] text-[var(--text-tertiary)] whitespace-nowrap">
-                          {countTasksForLabel(id)} tasks
+                          {countTasksForLabel(id)} {t('common.tasks')}
                         </span>
                         <button
                           onClick={() => startEdit(id)}
                           className="p-1 rounded text-[var(--text-tertiary)] hover:text-[var(--accent)] hover:bg-[var(--bg-tertiary)] opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                          title="Sửa nhãn"
+                          title={t('labels.create')}
                         >
                           <Pencil className="w-3 h-3" />
                         </button>
                         <button
                           onClick={() => setDeleteConfirm(id)}
                           className="p-1 rounded text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                          title="Xóa nhãn"
+                          title={t('labels.delete')}
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
@@ -223,13 +225,13 @@ export default function LabelManager() {
               {(editId || editName !== '' || editId === null) && (
                 <div className="p-4 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-primary)] space-y-3">
                   <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
-                    {editId ? 'Chỉnh sửa nhãn' : 'Tạo nhãn mới'}
+                    {editId ? t('labels.create') : t('labels.name')}
                   </h3>
 
                   {/* Name input */}
                   <div>
                     <label className="block text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1">
-                      Tên nhãn
+                      {t('labels.name')}
                     </label>
                     <input
                       type="text"
@@ -241,7 +243,7 @@ export default function LabelManager() {
                           // ID is generated on save
                         }
                       }}
-                      placeholder="VD: Bug, Feature, UI..."
+                      placeholder={t('labels.name')}
                       className="input-like w-full text-xs py-1.5 px-2.5"
                       onKeyDown={(e) => { if (e.key === 'Enter') handleSaveLabel(); }}
                     />
@@ -250,7 +252,7 @@ export default function LabelManager() {
                   {/* Color palette */}
                   <div>
                     <label className="block text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1.5">
-                      Màu sắc
+                      {t('labels.color')}
                     </label>
                     <div className="flex flex-wrap gap-1.5">
                       {PRESET_COLORS.map((c) => (
@@ -276,7 +278,7 @@ export default function LabelManager() {
                   {/* Custom hex */}
                   <div>
                     <label className="block text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1">
-                      Màu tùy chỉnh (hex)
+                      {t('labels.color')} (hex)
                     </label>
                     <div className="flex items-center gap-2">
                       <input
@@ -304,13 +306,13 @@ export default function LabelManager() {
                       disabled={!editName.trim()}
                       className="px-4 py-1.5 text-xs font-medium bg-[var(--accent)] hover:opacity-90 text-white rounded-md transition-opacity disabled:opacity-40 cursor-pointer"
                     >
-                      {editId ? 'Cập nhật' : 'Thêm nhãn'}
+                      {editId ? t('labels.save') : t('labels.create')}
                     </button>
                     <button
                       onClick={handleCancelEdit}
                       className="px-4 py-1.5 text-xs font-medium bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-md transition-colors cursor-pointer"
                     >
-                      Hủy
+                      {t('common.cancel')}
                     </button>
                   </div>
                 </div>
@@ -320,7 +322,7 @@ export default function LabelManager() {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
-                    Quy tắc tự động
+                    {t('labels.autoRule')}
                   </h3>
                   {!showNewRule && (
                     <button
@@ -328,14 +330,14 @@ export default function LabelManager() {
                       className="flex items-center gap-1 text-xs font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors cursor-pointer"
                     >
                       <Plus className="w-3 h-3" />
-                      Thêm quy tắc
+                      {t('labels.create')}
                     </button>
                   )}
                 </div>
 
                 {(!autoRules || autoRules.length === 0) && !showNewRule ? (
                   <p className="text-xs text-[var(--text-tertiary)] py-3 text-center">
-                    Chưa có quy tắc tự động nào. Quy tắc sẽ tự gán nhãn khi tải dữ liệu.
+                    {t('labels.noLabels')}
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -378,24 +380,23 @@ export default function LabelManager() {
                   onClick={(e) => e.stopPropagation()}
                 >
                   <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-                    Xóa nhãn
+                    {t('labels.delete')}
                   </h3>
                   <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                    Nhãn <strong>"{labelDefs[deleteConfirm]?.name}"</strong> đang được gán cho{' '}
-                    <strong>{countTasksForLabel(deleteConfirm)}</strong> task. Xóa vẫn tiếp tục?
+                    {t('labels.delete')} <strong>"{labelDefs[deleteConfirm]?.name}"</strong> ({countTasksForLabel(deleteConfirm)} {t('common.tasks')})?
                   </p>
                   <div className="flex items-center justify-end gap-2 pt-1">
                     <button
                       onClick={() => setDeleteConfirm(null)}
                       className="px-4 py-1.5 text-xs font-medium bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-md transition-colors cursor-pointer"
                     >
-                      Hủy
+                      {t('common.cancel')}
                     </button>
                     <button
                       onClick={handleDeleteConfirm}
                       className="px-4 py-1.5 text-xs font-medium bg-[var(--danger)] hover:opacity-90 text-white rounded-md transition-opacity cursor-pointer"
                     >
-                      Xóa
+                      {t('common.delete')}
                     </button>
                   </div>
                 </div>

@@ -2,24 +2,25 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Copy, CheckCircle2, ExternalLink, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useI18n } from '../i18n';
 import LabelBadge from './LabelBadge';
 import LabelDropdown from './LabelDropdown';
 
-const FIELD_LABELS = {
-  key: 'Issue Key',
-  summary: 'Tóm tắt',
-  status: 'Trạng thái',
-  issueType: 'Loại',
-  priority: 'Mức độ ưu tiên',
-  assignee: 'Người thực hiện',
-  comps: 'Phân hệ',
-  primarySprint: 'Sprint',
-  timeSpentHr: 'Thời gian đã log',
-  estimateHr: 'Giờ ước tính',
-  created: 'Ngày tạo',
-  resolved: 'Ngày kết thúc',
-  dueDate: 'Hạn chót',
-  labels: 'Nhãn',
+const FIELD_LABEL_KEYS = {
+  key: 'table.key',
+  summary: 'table.summary',
+  status: 'table.status',
+  issueType: 'table.key',
+  priority: 'table.key',
+  assignee: 'filter.assignee',
+  comps: 'filter.component',
+  primarySprint: 'filter.sprint',
+  timeSpentHr: 'table.hoursLogged',
+  estimateHr: 'table.hoursEstimate',
+  created: 'dashboard.lastUpdate',
+  resolved: 'dashboard.lastUpdate',
+  dueDate: 'dashboard.lastUpdate',
+  labels: 'table.labels',
 };
 
 function formatDate(d) {
@@ -33,6 +34,7 @@ function formatDate(d) {
 }
 
 export default function TaskDetail({ task, onClose }) {
+  const { t } = useI18n();
   if (!task) return null;
   const [copied, setCopied] = useState(false);
   const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
@@ -47,18 +49,18 @@ export default function TaskDetail({ task, onClose }) {
   };
 
   const fields = [
-    { label: FIELD_LABELS.key, value: task.key },
-    { label: FIELD_LABELS.summary, value: task.summary },
-    { label: FIELD_LABELS.status, value: task.status || '—' },
-    { label: FIELD_LABELS.issueType, value: task.issueType || '—' },
-    { label: FIELD_LABELS.priority, value: task.priority || '—' },
-    { label: FIELD_LABELS.assignee, value: task.assignee || '—' },
-    { label: FIELD_LABELS.comps, value: task.comps && task.comps.length > 0 ? task.comps.join(', ') : '—' },
-    { label: FIELD_LABELS.primarySprint, value: task.primarySprint || '—' },
-    { label: FIELD_LABELS.timeSpentHr, value: task.timeSpentHr != null ? task.timeSpentHr.toFixed(1) + 'h' : '—' },
-    { label: FIELD_LABELS.estimateHr, value: task.originalEstimateHr != null ? task.originalEstimateHr.toFixed(1) + 'h' : '—' },
-    { label: FIELD_LABELS.created, value: formatDate(task.created) },
-    { label: FIELD_LABELS.resolved, value: formatDate(task.resolved) },
+    { label: FIELD_LABEL_KEYS.key, value: task.key },
+    { label: FIELD_LABEL_KEYS.summary, value: task.summary },
+    { label: FIELD_LABEL_KEYS.status, value: task.status || '—' },
+    { label: FIELD_LABEL_KEYS.issueType, value: task.issueType || '—' },
+    { label: FIELD_LABEL_KEYS.priority, value: task.priority || '—' },
+    { label: FIELD_LABEL_KEYS.assignee, value: task.assignee || '—' },
+    { label: FIELD_LABEL_KEYS.comps, value: task.comps && task.comps.length > 0 ? task.comps.join(', ') : '—' },
+    { label: FIELD_LABEL_KEYS.primarySprint, value: task.primarySprint || '—' },
+    { label: FIELD_LABEL_KEYS.timeSpentHr, value: task.timeSpentHr != null ? task.timeSpentHr.toFixed(1) + 'h' : '—' },
+    { label: FIELD_LABEL_KEYS.estimateHr, value: task.originalEstimateHr != null ? task.originalEstimateHr.toFixed(1) + 'h' : '—' },
+    { label: FIELD_LABEL_KEYS.created, value: formatDate(task.created) },
+    { label: FIELD_LABEL_KEYS.resolved, value: formatDate(task.resolved) },
   ];
 
   return (
@@ -105,7 +107,7 @@ export default function TaskDetail({ task, onClose }) {
                   <button
                     onClick={handleCopyKey}
                     className="p-1.5 rounded-md text-[var(--text-tertiary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--accent)] transition-colors cursor-pointer"
-                    title="Sao chép Issue Key"
+                    title={t('table.key')}
                   >
                     {copied ? (
                       <CheckCircle2 className="w-4 h-4 text-[var(--success)]" />
@@ -132,7 +134,7 @@ export default function TaskDetail({ task, onClose }) {
                     }`}
                   >
                     <span className="w-32 flex-shrink-0 text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider pt-0.5">
-                      {f.label}
+                      {t(f.label)}
                     </span>
                     <span className="text-[13px] text-[var(--text-primary)] break-words flex-1">
                       {f.value}
@@ -142,7 +144,7 @@ export default function TaskDetail({ task, onClose }) {
                 {/* Labels field */}
                 <div className="flex items-start gap-3 py-2.5 border-b border-[var(--border-primary)]/50">
                   <span className="w-32 flex-shrink-0 text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider pt-0.5">
-                    {FIELD_LABELS.labels}
+                    {t(FIELD_LABEL_KEYS.labels)}
                   </span>
                   <div className="flex-1 relative">
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -156,7 +158,7 @@ export default function TaskDetail({ task, onClose }) {
                       <button
                         onClick={() => setLabelDropdownOpen(v => !v)}
                         className="p-0.5 rounded text-[var(--text-tertiary)] hover:text-[var(--accent)] hover:bg-[var(--bg-secondary)] transition-colors cursor-pointer"
-                        title="Gán nhãn"
+                        title={t('table.bulkLabel')}
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>
@@ -179,7 +181,7 @@ export default function TaskDetail({ task, onClose }) {
                   onClick={onClose}
                   className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors cursor-pointer"
                 >
-                  Đóng
+                  {t('common.close')}
                 </button>
               </div>
             </div>

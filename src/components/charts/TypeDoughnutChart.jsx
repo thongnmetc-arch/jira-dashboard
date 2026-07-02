@@ -6,16 +6,18 @@ import {
   Legend,
 } from 'chart.js';
 import { useMemo } from 'react';
+import { useI18n } from '../../i18n';
 import { CHART_PALETTE } from '../../utils/exportUtils';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function TypeDoughnutChart({ tasks }) {
+  const { t } = useI18n();
   const chartData = useMemo(() => {
     const groups = {};
-    tasks.forEach(t => {
-      const type = t.issueType || 'Không xác định';
-      groups[type] = (groups[type] || 0) + t.timeSpentHr;
+    tasks.forEach(task => {
+      const type = task.issueType || t('common.tasks');
+      groups[type] = (groups[type] || 0) + task.timeSpentHr;
     });
 
     const sorted = Object.entries(groups).sort((a, b) => b[1] - a[1]);
@@ -27,7 +29,7 @@ export default function TypeDoughnutChart({ tasks }) {
       labels: labels.map((l, i) => l + ' (' + data[i].toFixed(1) + 'h)'),
       datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: 'var(--bg-primary)' }],
     };
-  }, [tasks]);
+  }, [tasks, t]);
 
   const options = {
     responsive: true,
@@ -43,7 +45,7 @@ export default function TypeDoughnutChart({ tasks }) {
           label: function (ctx) {
             const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
             const pct = total > 0 ? (ctx.parsed / total * 100).toFixed(1) : 0;
-            return ctx.parsed.toFixed(1) + ' giờ (' + pct + '%)';
+            return ctx.parsed.toFixed(1) + ' ' + t('common.hours') + ' (' + pct + '%)';
           },
         },
       },
@@ -53,7 +55,7 @@ export default function TypeDoughnutChart({ tasks }) {
   return (
     <div className="card chart-card">
       <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
-        Phân bổ thời gian theo loại CV
+        {t('table.key')}
       </h3>
       <div className="relative h-[300px]">
         <Doughnut data={chartData} options={options} />

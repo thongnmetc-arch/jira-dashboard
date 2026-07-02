@@ -5,8 +5,8 @@
 | Trường           | Nội dung                                                     |
 |------------------|---------------------------------------------------------------|
 | **Dự án**        | JIRA Time Tracking Dashboard                                  |
-| **Phiên bản**    | 3.0                                                           |
-| **Ngày**         | 27/06/2026                                                    |
+| **Phiên bản**    | 4.0                                                           |
+| **Ngày**         | 02/07/2026                                                    |
 | **Tác giả**      | AI Studio Agent                                               |
 | **Trạng thái**   | Dự thảo                                                       |
 
@@ -71,6 +71,7 @@ Hệ thống hoạt động hoàn toàn trên trình duyệt web (client-side), 
 - **Phase 2 (Đã hoàn thành):** Bộ lọc dữ liệu tương tác, bảng dữ liệu chi tiết có phân trang/sắp xếp/tìm kiếm, xuất báo cáo (CSV/PNG), tính toán effort theo công thức ratio mới, quản lý OT và nghỉ phép đơn giản hóa (không chọn ngày — chỉ nhập tổng số giờ + quick-add buttons).
 - **Phase 3 (Đã hoàn thành — merged vào Phase 2):** Lưu và so sánh lịch sử phân tích, tích hợp JIRA API (API Token + Bookmarklet), gán nhãn tùy chỉnh cho công việc. Tất cả tính năng Phase 3 đã được tích hợp và hoàn thiện.
 - **Phase 4 (Đã hoàn thành):** Chuyển đổi kiến trúc từ single HTML file sang **React 19 SPA với Vite, Tailwind CSS, Framer Motion**. Bao gồm 28+ source file, 18+ components (layout/: AppShell, Sidebar, TopBar), Context API state management, dark/light theme, sidebar navigation, sticky layout, data source indicator, floating back-to-top button, overdue warning banner.
+- **Phase 5 (Đã hoàn thành):** Bổ sung routing với **react-router-dom** với 8 tab dashboard (Overview, Charts, Data, Gantt, Compare, OT, Labels, History). Hỗ trợ đa ngôn ngữ (Tiếng Việt/Tiếng Anh) qua i18n. Triển khai Docker + Kubernetes (Dockerfile, docker-compose.yml, k8s/). Lọc toàn cục task Cancelled. Cải tiến hiển thị Effort (dual mode). Thiết kế lại màn hình wizard. Xoá dependency HTML import.
 
 **Ngoài phạm vi:** Tích hợp với các hệ thống quản lý dự án khác ngoài JIRA, xác thực người dùng đa cấp, triển khai đa người dùng dùng chung dữ liệu qua mạng.
 
@@ -156,7 +157,7 @@ Hệ thống hoạt động hoàn toàn trên trình duyệt web (client-side), 
 
 ```mermaid
 graph TD
-    subgraph "Client (Trình duyệt web — React 19 SPA — v3.0)"
+    subgraph "Client (Trình duyệt web — React 19 SPA — v4.0)"
         direction TB
         
         subgraph "AppProvider (Context API + useReducer)"
@@ -227,7 +228,7 @@ graph TD
     LS -.->|Persist| A1
 ```
 
-**Luồng dữ liệu chính (v3.0):**
+**Luồng dữ liệu chính (v4.0):**
 
 1. **Ba nguồn dữ liệu đầu vào:**
    - **CSV**: Người dùng kéo-thả file CSV trong `JiraConnect.jsx` → `FileReader.readAsText(file, 'UTF-8')` → `csvParser.js` parse (2-pass: rows by newline → fields by semicolon, xử lý BOM, quote) → `Column Discovery` xác định vị trí cột → dispatch `SET_TASKS`.

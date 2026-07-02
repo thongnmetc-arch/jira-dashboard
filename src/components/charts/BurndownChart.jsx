@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -12,6 +12,8 @@ import {
   Filler,
 } from 'chart.js';
 import { motion } from 'framer-motion';
+import { ChevronDown } from 'lucide-react';
+import { useI18n } from '../../i18n';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
@@ -32,16 +34,70 @@ function formatDateLabel(d) {
   return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
 }
 
+// ── Custom dropdown ─────────────────────────────────────────────────────────
+
+function Dropdown({ value, onChange, options, placeholder, className }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const hasValue = value !== '' && value !== undefined && value !== null;
+  const selected = options.find(o => o.value === value);
+  const displayLabel = selected ? selected.label : (placeholder || '');
+
+  return (
+    <div ref={ref} className="relative flex-shrink-0">
+      <button
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-1.5 px-2.5 h-8 rounded-lg text-xs font-medium transition-colors border cursor-pointer ${
+          hasValue
+            ? 'border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]'
+            : 'border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:border-[var(--accent)]/50'
+        } ${className || ''}`}
+      >
+        <span className="max-w-[100px] truncate">{displayLabel}</span>
+        <ChevronDown className={`w-3 h-3 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 w-56 max-h-60 overflow-y-auto bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-xl shadow-xl py-1">
+          {options.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-[var(--bg-secondary)] cursor-pointer ${
+                value === opt.value
+                  ? 'text-[var(--accent)] font-medium bg-[var(--accent-light)]'
+                  : 'text-[var(--text-primary)]'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function BurndownChart({ tasks }) {
+  const { t } = useI18n();
   const [selectedSprint, setSelectedSprint] = useState('');
 
   const { sprints, chartData } = useMemo(() => {
     // Group by sprint
     const sprintMap = {};
-    tasks.forEach(t => {
-      const s = t.primarySprint || '(Không có Sprint)';
+    tasks.forEach(task => {
+      const s = task.primarySprint;
+      if (!s) return;
       if (!sprintMap[s]) sprintMap[s] = [];
-      sprintMap[s].push(t);
+      sprintMap[s].push(task);
     });
 
     const sprintNames = Object.keys(sprintMap).sort((a, b) => {
@@ -61,9 +117,9 @@ export default function BurndownChart({ tasks }) {
     // Find sprint date range from task created/resolved dates
     let minDate = null;
     let maxDate = null;
-    sprintTasks.forEach(t => {
-      const start = t.created || t.startDate;
-      const end = t.resolved || t.created || t.startDate;
+    sprintTasks.forEach(task => {
+      const start = task.created || task.startDate;
+      const end = task.resolved || task.created || task.startDate;
       if (start && (!minDate || start < minDate)) minDate = new Date(start);
       if (end && (!maxDate || end > maxDate)) maxDate = new Date(end);
     });
@@ -119,7 +175,7 @@ export default function BurndownChart({ tasks }) {
         labels: days.map(formatDateLabel),
         datasets: [
           {
-            label: 'Lý tưởng',
+            label: t('stats.sufficient'),
             data: ideal,
             borderColor: '#22c55e',
             backgroundColor: 'rgba(34,197,94,0.08)',
@@ -131,7 +187,7 @@ export default function BurndownChart({ tasks }) {
             tension: 0.3,
           },
           {
-            label: 'Thực tế',
+            label: t('stats.overview'),
             data: actual,
             borderColor: '#6366f1',
             backgroundColor: 'rgba(99,102,241,0.12)',
@@ -147,7 +203,7 @@ export default function BurndownChart({ tasks }) {
         ],
       },
     };
-  }, [tasks, selectedSprint]);
+  }, [tasks, selectedSprint, t]);
 
   const options = {
     responsive: true,
@@ -170,7 +226,7 @@ export default function BurndownChart({ tasks }) {
       },
       y: {
         beginAtZero: true,
-        title: { display: true, text: 'Giờ còn lại', font: { size: 11 } },
+        title: { display: true, text: t('common.hours'), font: { size: 11 } },
         ticks: { font: { size: 10 }, callback: (v) => v + 'h' },
       },
     },
@@ -184,18 +240,14 @@ export default function BurndownChart({ tasks }) {
     >
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
-          Biểu đồ Burndown
+          {t('sidebar.burndown')}
         </h3>
-        <select
+        <Dropdown
           value={selectedSprint}
-          onChange={(e) => setSelectedSprint(e.target.value)}
-          className="input-like text-xs py-1 px-2 min-w-[140px]"
-        >
-          <option value="">Chọn Sprint</option>
-          {sprints.map(s => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
+          onChange={setSelectedSprint}
+          options={[{ value: '', label: t('filter.sprint') }, ...sprints.map(s => ({ value: s, label: s }))]}
+          placeholder={t('filter.sprint')}
+        />
       </div>
 
       {chartData ? (
@@ -205,8 +257,8 @@ export default function BurndownChart({ tasks }) {
       ) : (
         <div className="py-8 text-center text-[var(--text-tertiary)] text-sm">
           {tasks.length === 0
-            ? 'Chưa có dữ liệu để hiển thị'
-            : 'Không có đủ dữ liệu ngày để vẽ burndown cho Sprint này'}
+            ? t('dashboard.noData')
+            : t('dashboard.noTasksFound')}
         </div>
       )}
     </motion.div>

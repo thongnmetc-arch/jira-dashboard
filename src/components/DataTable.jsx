@@ -6,10 +6,12 @@ import TaskDetail from './TaskDetail';
 import LabelBadge from './LabelBadge';
 import LabelDropdown from './LabelDropdown';
 import { exportCSV } from '../utils/exportUtils';
+import { useI18n } from '../i18n';
 
 const TABLE_PAGE_SIZE = 20;
 
 export default function DataTable() {
+  const { t } = useI18n();
   const { state, dispatch } = useApp();
   const [selectedTask, setSelectedTask] = useState(null);
   const [labelDropdownTask, setLabelDropdownTask] = useState(null);
@@ -96,15 +98,15 @@ export default function DataTable() {
   }, [dispatch]);
 
   const columns = [
-    { key: 'key', label: 'Issue Key' },
-    { key: 'summary', label: 'Tóm tắt' },
-    { key: 'comps', label: 'Phân hệ' },
-    { key: 'primarySprint', label: 'Sprint' },
-    { key: 'assignee', label: 'Người thực hiện' },
-    { key: 'timeSpentHr', label: 'Giờ log' },
-    { key: 'originalEstimateHr', label: 'Giờ ước tính' },
-    { key: 'status', label: 'Trạng thái' },
-    { key: 'labels', label: 'Nhãn' },
+    { key: 'key', label: t('table.key') },
+    { key: 'summary', label: t('table.summary') },
+    { key: 'comps', label: t('table.component') },
+    { key: 'primarySprint', label: t('table.sprint') },
+    { key: 'assignee', label: t('table.assignee') },
+    { key: 'timeSpentHr', label: t('table.hoursLogged') },
+    { key: 'originalEstimateHr', label: t('table.hoursEstimate') },
+    { key: 'status', label: t('table.status') },
+    { key: 'labels', label: t('table.labels') },
   ];
 
   const handleSelectAll = useCallback(() => {
@@ -156,7 +158,7 @@ export default function DataTable() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-          Bảng dữ liệu chi tiết
+          {t('table.title')}
         </h3>
         <div className="flex items-center gap-3">
           {/* Search */}
@@ -164,7 +166,7 @@ export default function DataTable() {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-[14px] h-[14px] text-[var(--text-tertiary)]" />
             <input
               type="text"
-              placeholder="Tìm kiếm..."
+              placeholder={t('table.search')}
               value={tableSearchTerm}
               onChange={handleSearch}
               className="input-like pl-8 w-[180px] text-xs"
@@ -172,7 +174,7 @@ export default function DataTable() {
             />
           </div>
           <span className="text-xs text-[var(--text-tertiary)] whitespace-nowrap">
-            {filtered.length} dòng · Trang {currentPage}/{totalPages}
+            {filtered.length} {t('table.rows')} · {t('table.page')} {currentPage}/{totalPages}
           </span>
         </div>
       </div>
@@ -186,14 +188,14 @@ export default function DataTable() {
           className="flex items-center gap-2 mb-3 p-2.5 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg"
         >
           <span className="text-xs font-medium text-indigo-700 dark:text-indigo-300 whitespace-nowrap">
-            Đã chọn {selectedTasks.length} task
+            {t('table.selectedCount')} {selectedTasks.length} {t('common.tasks')}
           </span>
           <div className="flex-1" />
           <button
             onClick={handleBulkClose}
             className="px-3 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors cursor-pointer"
           >
-            Đánh dấu đã xong
+            {t('table.markDone')}
           </button>
           <button
             ref={bulkButtonRef}
@@ -201,14 +203,14 @@ export default function DataTable() {
             className="px-3 py-1.5 text-xs font-medium bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border-primary)] rounded-md transition-colors flex items-center gap-1 cursor-pointer"
           >
             <Tag className="w-3 h-3" />
-            Gán nhãn
+            {t('table.bulkLabel')}
           </button>
           <button
             onClick={handleBulkExport}
             className="px-3 py-1.5 text-xs font-medium bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border-primary)] rounded-md transition-colors flex items-center gap-1 cursor-pointer"
           >
             <Download className="w-3 h-3" />
-            Xuất CSV
+            {t('table.exportCsv')}
           </button>
           <button
             onClick={() => dispatch({ type: 'SET_SELECTED_TASKS', payload: [] })}
@@ -223,7 +225,7 @@ export default function DataTable() {
       {selectedTasks.length > 0 && (
         <div className="flex items-center gap-1.5 mb-2 text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/10 px-2.5 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800/50">
           <AlertCircle className="w-3 h-3 flex-shrink-0" />
-          <span>Thay đổi chỉ hiển thị trong app, không đồng bộ JIRA</span>
+          <span>{t('table.appOnly')}</span>
         </div>
       )}
 
@@ -237,7 +239,7 @@ export default function DataTable() {
                 <button
                   onClick={handleSelectAll}
                   className="cursor-pointer hover:opacity-70 transition-opacity"
-                  title={page.every(t => selectedTasks.includes(t.key)) ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                  title={page.every(t => selectedTasks.includes(t.key)) ? t('table.deselectAll') : t('table.selectAll')}
                 >
                   {page.every(t => selectedTasks.includes(t.key)) ? (
                     <CheckSquare className="w-4 h-4 text-[var(--accent)]" />
@@ -372,13 +374,13 @@ export default function DataTable() {
           >
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-[var(--text-secondary)]">
-                Gán nhãn cho {selectedTasks.length} task
+                {t('table.bulkLabelFor')} {selectedTasks.length} {t('common.tasks')}
               </span>
               <button
                 onClick={() => setBulkLabelOpen(false)}
                 className="text-xs text-[var(--text-tertiary)] hover:text-[var(--danger)] transition-colors cursor-pointer"
               >
-                Đóng
+                {t('table.close')}
               </button>
             </div>
             <div className="relative">

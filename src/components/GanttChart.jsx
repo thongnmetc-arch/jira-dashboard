@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
+import { useI18n } from '../i18n';
 import { daysBetween, addDays, normalizeDay, fmtShortDate, toDateStr } from '../utils/dateUtils';
 import { getComponentColor } from '../utils/exportUtils';
 
@@ -29,6 +30,7 @@ function GanttBar({ t, leftPct, widthPct, dur, color, comp, showLabels }) {
 }
 
 export default function GanttChart({ tasks }) {
+  const { t } = useI18n();
   const { display, totalDays, padStart, padEnd, compColors } = useMemo(() => {
     let valid = tasks.filter(t => t.startDate && (t.resolved || t.created));
     valid.forEach(t => { t._end = t.resolved || t.created; });
@@ -66,10 +68,10 @@ export default function GanttChart({ tasks }) {
     return (
       <div className="card chart-card mb-6">
         <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3 pb-2 border-b border-[var(--border-primary)]">
-          Biểu đồ Gantt
+          {t('tabs.gantt')}
         </h3>
         <p className="py-5 text-center text-[var(--text-tertiary)] text-sm">
-          Không có dữ liệu ngày để hiển thị Gantt.
+          {t('dashboard.noData')}
         </p>
       </div>
     );
@@ -92,24 +94,24 @@ export default function GanttChart({ tasks }) {
       className="card chart-card mb-6"
     >
       <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3 pb-2 border-b border-[var(--border-primary)]">
-        Biểu đồ Gantt
+        {t('tabs.gantt')}
       </h3>
       <div className="overflow-x-auto overflow-y-auto max-h-[500px] relative">
         <table className="border-collapse w-full min-w-[700px] text-[0.78rem]">
           <thead>
             <tr>
               <th
-                className="sticky top-0 z-10 bg-[var(--bg-secondary)] px-2 py-1.5 border-b border-[var(--border-primary)] text-left text-[0.65rem] font-semibold text-[var(--text-secondary)] uppercase tracking-wider whitespace-nowrap"
+                className="sticky top-0 z-20 bg-[var(--bg-secondary)] px-2 py-1.5 border-b border-[var(--border-primary)] text-left text-[0.65rem] font-semibold text-[var(--text-secondary)] uppercase tracking-wider whitespace-nowrap"
                 style={{ minWidth: '150px', left: 0 }}
               >
-                Công việc
+                {t('table.summary')}
               </th>
               {dateHeaders.map((dh, i) => (
                 <th
                   key={i}
-                  className={`sticky top-0 z-10 px-1 py-1.5 border-b border-[var(--border-primary)] text-center font-semibold whitespace-nowrap text-[0.6rem] ${
+                  className={`sticky top-0 z-20 px-1 py-1.5 border-b border-[var(--border-primary)] text-center font-semibold whitespace-nowrap text-[0.6rem] ${
                     dh.isWeekend
-                      ? 'text-[var(--text-tertiary)] bg-[var(--bg-secondary)]/50'
+                      ? 'text-[var(--text-tertiary)] bg-[var(--bg-secondary)]'
                       : 'text-[var(--text-secondary)] bg-[var(--bg-secondary)]'
                   }`}
                   style={{ width: dayWidth + 'px' }}
@@ -134,7 +136,7 @@ export default function GanttChart({ tasks }) {
               return (
                 <tr key={t.key + idx} className="hover:bg-[var(--bg-secondary)] transition-colors">
                   <td
-                    className="sticky left-0 z-[1] bg-[var(--bg-primary)] px-2 py-1 border-b border-[var(--border-primary)] whitespace-nowrap overflow-hidden text-ellipsis text-[0.78rem] text-[var(--text-primary)]"
+                    className="sticky left-0 z-10 bg-[var(--bg-primary)] px-2 py-1 border-b border-[var(--border-primary)] whitespace-nowrap overflow-hidden text-ellipsis text-[0.78rem] text-[var(--text-primary)]"
                     style={{ maxWidth: '180px' }}
                     title={t.key + ': ' + t.summary}
                   >

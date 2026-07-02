@@ -1,10 +1,12 @@
 import { motion } from 'framer-motion';
 import { useApp } from '../context/AppContext';
+import { useI18n } from '../i18n';
 import { calculateEffort, calculateAverageEffort } from '../utils/effortCalculator';
 import { useMemo } from 'react';
 import { Gauge } from 'lucide-react';
 
 export default function EffortCard({ tasks, variant = 'month' }) {
+  const { t } = useI18n();
   const { state } = useApp();
 
   const result = useMemo(() => {
@@ -31,7 +33,7 @@ export default function EffortCard({ tasks, variant = 'month' }) {
       >
         <div className="flex items-center justify-between mb-2">
           <div className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-widest">
-            Effort TB
+            {t('stats.effortAvg')}
           </div>
           <div className="p-1.5 rounded-md bg-[var(--bg-secondary)]">
             <Gauge className="w-5 h-5 text-[var(--success)]" />
@@ -52,9 +54,9 @@ export default function EffortCard({ tasks, variant = 'month' }) {
           <span className="text-xs font-semibold" style={{
             color: avgEffort < 1 ? 'var(--success)' : avgEffort > 1 ? 'var(--danger)' : 'var(--warning)'
           }}>
-            {avgEffort < 1 ? '✅ Vượt' : avgEffort > 1 ? '⚠️ Thiếu' : '✅ Đủ'}
+            {avgEffort < 1 ? t('stats.above') : avgEffort > 1 ? t('stats.below') : t('stats.sufficient')}
           </span>
-          <span className="text-[10px] text-[var(--text-tertiary)] ml-auto">Trung bình ({avgResult.monthsWithData} tháng)</span>
+          <span className="text-[10px] text-[var(--text-tertiary)] ml-auto">{t('stats.avgDetail').replace('{n}', avgResult.monthsWithData)}</span>
         </div>
       </motion.div>
     );
@@ -69,7 +71,7 @@ export default function EffortCard({ tasks, variant = 'month' }) {
     >
       <div className="flex items-center justify-between mb-2">
         <div className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-widest">
-          Effort tháng
+          {t('stats.effortMonth')}
         </div>
         <div className="p-1.5 rounded-md bg-[var(--bg-secondary)]">
           <Gauge className="w-5 h-5 text-[var(--success)]" />
@@ -90,12 +92,12 @@ export default function EffortCard({ tasks, variant = 'month' }) {
         <span id="effortLabelText" className="text-xs font-semibold" style={{
           color: effort < 1 ? 'var(--success)' : effort > 1 ? 'var(--danger)' : 'var(--warning)'
         }}>
-          {effort < 1 ? '✅ Vượt' : effort > 1 ? '⚠️ Thiếu' : '✅ Đủ'}
+          {effort < 1 ? t('stats.above') : effort > 1 ? t('stats.below') : t('stats.sufficient')}
         </span>
-        <span className="text-[10px] text-[var(--text-tertiary)] ml-auto">Tháng hiện tại</span>
+        <span className="text-[10px] text-[var(--text-tertiary)] ml-auto">{t('stats.currentMonth')}</span>
       </div>
       <div className="text-[11px] text-[var(--text-tertiary)] mt-0.5 truncate" title={result.detail}>
-        {result.detail || 'Chưa có dữ liệu'}
+        {result.detail || t('dashboard.noData')}
       </div>
       <div className="w-full h-2.5 bg-[var(--bg-tertiary)] rounded-full mt-2.5 overflow-hidden">
         <motion.div
@@ -113,7 +115,7 @@ export default function EffortCard({ tasks, variant = 'month' }) {
       {effort > 1 && (
         <div className="mt-2 text-[11px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded flex items-center gap-1">
           <span>⚠️</span>
-          <span>Effort &gt; 1 — kiểm tra lại xem đã log đủ task chưa</span>
+          <span>{t('stats.effortWarning')}</span>
         </div>
       )}
     </motion.div>

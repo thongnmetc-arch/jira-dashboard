@@ -1,0 +1,454 @@
+import { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { History, Save, Eye, Trash2, CheckSquare, Square } from 'lucide-react';
+import { useApp } from '../context/AppContext';
+import { useI18n } from '../i18n';
+import {
+  saveSnapshot,
+  loadSnapshot,
+  listSnapshots,
+  deleteSnapshot,
+  getStorageUsage,
+  isStorageAvailable,
+  formatSavedAt,
+  STORAGE_WARNING_THRESHOLD,
+} from '../utils/historyUtils';
+import CompareView from './CompareView';
+
+/**
+ * HistoryPanelInline — inline tab version of HistoryPanel.
+ * No drawer/overlay — renders directly as a dashboard tab.
+ * Keeps all logic and confirmation modals.
+ */
+export default function HistoryPanelInline() {
+  const { t } = useI18n();
+  const { state, dispatch } = useApp();
+  const { allTasks, fileName } = state;
+
+  // ── Local state ──────────────────────────────────────────
+  const [snapshots, setSnapshots] = useState([]);
+  const [snapshotName, setSnapshotName] = useState('');
+  const [selectedCompare, setSelectedCompare] = useState([]);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [restoreTarget, setRestoreTarget] = useState(null);
+  const [storageUsage, setStorageUsage] = useState({ totalKB: 0, snapshotsKB: 0, snapshotsCount: 0 });
+  const [saveStatus, setSaveStatus] = useState(null); // { type: 'success'|'error', msg }
+  const [compareData, setCompareData] = useState(null); // [snapshotA, snapshotB]
+  const [storageError, setStorageError] = useState(null);
+
+  // ── Derived ──────────────────────────────────────────────
+  const currentTotalHours = allTasks.reduce((s, t) => s + (t.timeSpentHr || 0), 0);
+  const periodText =
+    allTasks.length > 0
+      ? `${allTasks.length} ${t('common.tasks')} · ${currentTotalHours.toFixed(1)}h`
+      : t('dashboard.noData');
+  const storageAvailable = isStorageAvailable();
+  const isWarning = storageUsage.totalKB >= STORAGE_WARNING_THRESHOLD;
+  const storagePercent = Math.min(100, Math.round((storageUsage.totalKB / (5 * 1024)) * 100));
+
+  // ── Refresh snapshot list from localStorage ────────────
+  const refreshList = useCallback(() => {
+    try {
+      const list = listSnapshots();
+      setSnapshots(list);
+      setStorageUsage(getStorageUsage());
+      setStorageError(null);
+    } catch (err) {
+      setStorageError(t('common.error'));
+    }
+  }, [t]);
+
+  // Reload list on mount (when tab becomes active)
+  useEffect(() => {
+    refreshList();
+    setSnapshotName('');
+    setSelectedCompare([]);
+    setSaveStatus(null);
+    setCompareData(null);
+    setDeleteTarget(null);
+    setRestoreTarget(null);
+  }, [refreshList]);
+
+  // Load full snapshot data for comparison when exactly 2 selected
+  useEffect(() => {
+    if (selectedCompare.length === 2) {
+      const [idA, idB] = selectedCompare;
+      const a = loadSnapshot(idA);
+      const b = loadSnapshot(idB);
+      if (a && b) {
+        setCompareData([a, b]);
+      } else {
+        setCompareData(null);
+      }
+    } else {
+      setCompareData(null);
+    }
+  }, [selectedCompare]);
+
+  // ── Handlers ─────────────────────────────────────────────
+  const handleSave = () => {
+    const name = snapshotName.trim();
+    if (!name) return;
+    if (allTasks.length === 0) {
+      setSaveStatus({ type: 'error', msg: t('dashboard.noData') });
+      return;
+    }
+
+    const result = saveSnapshot(state, name);
+    if (result.success) {
+      setSaveStatus({ type: 'success', msg: t('history.save') + ' "' + name + '"' });
+      setSnapshotName('');
+      refreshList();
+      setTimeout(() => setSaveStatus(null), 3000); // Auto-clear after 3s
+    } else {
+      setSaveStatus({ type: 'error', msg: result.error || t('common.error') });
+      setTimeout(() => setSaveStatus(null), 5000); // Auto-clear after 5s
+    }
+  };
+
+  const handleRestore = () => {
+    if (!restoreTarget) return;
+    const snapshot = loadSnapshot(restoreTarget.id);
+    if (!snapshot) {
+      setSaveStatus({ type: 'error', msg: t('common.error') });
+      setRestoreTarget(null);
+      return;
+    }
+
+    dispatch({
+      type: 'RESTORE_SNAPSHOT',
+      payload: {
+        tasks: snapshot.tasks,
+        name: snapshot.name,
+        fileName: snapshot.metadata?.fileName || '',
+        otLeaveData: snapshot.metadata?.otLeaveData || { otTotal: 0, leaveTotal: 0 },
+        labelDefs: snapshot.metadata?.labelDefs || {},
+        labelAssignments: snapshot.metadata?.labelAssignments || {},
+      },
+    });
+    setRestoreTarget(null);
+    // No close — inline tab
+  };
+
+  const handleDelete = () => {
+    if (!deleteTarget) return;
+    const deleted = deleteSnapshot(deleteTarget);
+    if (deleted) {
+      // Clear compare selection if deleted snapshot was selected
+      setSelectedCompare((prev) => prev.filter((id) => id !== deleteTarget));
+      refreshList();
+    }
+    setDeleteTarget(null);
+  };
+
+  const handleToggleCompare = (id) => {
+    setSelectedCompare((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((x) => x !== id);
+      }
+      if (prev.length >= 2) {
+        // Replace the oldest selection
+        return [prev[1], id];
+      }
+      return [...prev, id];
+    });
+  };
+
+  // ── Render ───────────────────────────────────────────────
+  return (
+    <motion.div
+      key="history"
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 6 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-4">
+        <History className="w-4 h-4 text-[var(--accent)]" />
+        <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+          {t('history.title')}
+        </h2>
+      </div>
+
+      <div className="space-y-6">
+        {/* ─── Section A: Save ─── */}
+        <div>
+          <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
+            {t('history.save')}
+          </h3>
+
+          {/* Current session summary */}
+          <div className="mb-3 px-3 py-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)]">
+            <div className="text-xs text-[var(--text-primary)] font-medium truncate">
+              {fileName || t('common.file')}
+            </div>
+            <div className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
+              {periodText}
+            </div>
+          </div>
+
+          {/* Name input */}
+          <input
+            type="text"
+            value={snapshotName}
+            onChange={(e) => setSnapshotName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
+            placeholder={t('history.name')}
+            className="input-like w-full text-xs py-1.5 px-2.5 mb-2"
+            disabled={!storageAvailable}
+          />
+
+          {/* Save button */}
+          <button
+            onClick={handleSave}
+            disabled={!snapshotName.trim() || allTasks.length === 0 || !storageAvailable}
+            className="w-full flex items-center justify-center gap-1.5 bg-[var(--accent)] hover:opacity-90 text-white px-4 py-2 rounded-lg text-xs font-medium transition-opacity disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+          >
+            <Save className="w-3.5 h-3.5" />
+            {t('history.save')}
+          </button>
+
+          {/* Save status feedback */}
+          {saveStatus && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`mt-2 text-xs px-3 py-1.5 rounded-lg ${
+                saveStatus.type === 'success'
+                  ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'
+                  : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800'
+              }`}
+            >
+              {saveStatus.msg}
+              <button
+                onClick={() => setSaveStatus(null)}
+                className="ml-2 font-bold hover:opacity-70 cursor-pointer"
+              >
+                ×
+              </button>
+            </motion.div>
+          )}
+
+          {/* Storage bar */}
+          {storageAvailable && (
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)] mb-1">
+                <span>
+                  {t('history.storage')}: {storageUsage.totalKB} KB / 5 MB ({storageSnapshotsText(storageUsage.snapshotsCount, t)})
+                </span>
+                <span>{storagePercent}%</span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-[var(--bg-secondary)] overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${storagePercent}%` }}
+                  transition={{ duration: 0.4 }}
+                  className={`h-full rounded-full ${
+                    isWarning ? 'bg-amber-500' : 'bg-[var(--accent)]'
+                  }`}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Storage warning */}
+          {isWarning && storageAvailable && (
+            <div className="mt-2 flex items-start gap-1.5 text-xs px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400">
+              <span className="text-sm leading-none mt-0.5">⚠</span>
+              <span>
+                {t('history.storage')} {(storageUsage.totalKB / 1024).toFixed(1)} MB / 5 MB.
+              </span>
+            </div>
+          )}
+
+          {/* Storage disabled message */}
+          {!storageAvailable && (
+            <div className="mt-2 flex items-start gap-1.5 text-xs px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400">
+              <span className="text-sm leading-none mt-0.5">✕</span>
+              <span>{t('common.error')}</span>
+            </div>
+          )}
+        </div>
+
+        {/* ─── Section B: List ─── */}
+        <div>
+          <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
+            {t('history.title')} ({snapshots.length})
+          </h3>
+
+          {snapshots.length === 0 ? (
+            <p className="text-xs text-[var(--text-tertiary)] py-4 text-center">
+              {t('history.noSnapshots')}
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              {snapshots.map((s) => {
+                const isSelected = selectedCompare.includes(s.id);
+                const displayName = s.name || s.id;
+                const totalHrs = s.metadata?.totalHours != null
+                  ? `${Number(s.metadata.totalHours).toFixed(1)}h`
+                  : '';
+                const period = s.metadata?.period || '';
+
+                return (
+                  <motion.div
+                    key={s.id}
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] group"
+                  >
+                    {/* Compare checkbox */}
+                    <button
+                      onClick={() => handleToggleCompare(s.id)}
+                      className="flex-shrink-0 text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors cursor-pointer"
+                      title={t('history.compare')}
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="w-3.5 h-3.5 text-[var(--accent)]" />
+                      ) : (
+                        <Square className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium text-[var(--text-primary)] truncate">
+                        {displayName}
+                      </div>
+                      <div className="text-[10px] text-[var(--text-tertiary)] flex items-center gap-1.5 flex-wrap">
+                        <span>{formatSavedAt(s.savedAt)}</span>
+                        <span>·</span>
+                        <span>{s.taskCount} {t('common.tasks')}</span>
+                        {totalHrs && (
+                          <>
+                            <span>·</span>
+                            <span>{totalHrs}</span>
+                          </>
+                        )}
+                        {period && (
+                          <>
+                            <span>·</span>
+                            <span>{period}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <button
+                      onClick={() => setRestoreTarget({ id: s.id, name: displayName })}
+                      className="p-1 rounded text-[var(--text-tertiary)] hover:text-[var(--accent)] hover:bg-[var(--bg-tertiary)] transition-all cursor-pointer"
+                      title={t('history.restore')}
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteTarget(s.id)}
+                      className="p-1 rounded text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:bg-red-50 dark:hover:bg-red-900/20 transition-all cursor-pointer"
+                      title={t('history.delete')}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ─── Section C: Compare (conditional) ─── */}
+        {compareData && compareData.length === 2 && (
+          <div>
+            <CompareView
+              snapshotA={compareData[0]}
+              snapshotB={compareData[1]}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* ─── Restore confirmation modal ─── */}
+      <AnimatePresence>
+        {restoreTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 pointer-events-none"
+          >
+            <div
+              className="pointer-events-auto w-full max-w-sm bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-xl shadow-2xl p-5 space-y-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                {t('history.restore')}
+              </h3>
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                {t('history.restore')} <strong>"{restoreTarget.name}"</strong>?
+              </p>
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  onClick={() => setRestoreTarget(null)}
+                  className="px-4 py-1.5 text-xs font-medium bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-md transition-colors cursor-pointer"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  onClick={handleRestore}
+                  className="px-4 py-1.5 text-xs font-medium bg-[var(--accent)] hover:opacity-90 text-white rounded-md transition-opacity cursor-pointer"
+                >
+                  {t('common.restore')}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── Delete confirmation modal ─── */}
+      <AnimatePresence>
+        {deleteTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 pointer-events-none"
+          >
+            <div
+              className="pointer-events-auto w-full max-w-sm bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-xl shadow-2xl p-5 space-y-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                {t('history.delete')}
+              </h3>
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                {t('common.deleteConfirm')}?
+              </p>
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  className="px-4 py-1.5 text-xs font-medium bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-md transition-colors cursor-pointer"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="px-4 py-1.5 text-xs font-medium bg-[var(--danger)] hover:opacity-90 text-white rounded-md transition-opacity cursor-pointer"
+                >
+                  {t('common.delete')}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+/** Helper: build a human-friendly snapshots count string */
+function storageSnapshotsText(count, t) {
+  if (count === 0) return '0 ' + t('history.title');
+  return count + ' ' + t('history.title');
+}
