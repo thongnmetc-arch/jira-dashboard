@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import { ChevronDown, Layers, Box, User } from 'lucide-react';
-import LabelFilter from './LabelFilter';
 import { useI18n } from '../i18n';
 
 function FilterPopover({ label, icon: Icon, options, value, onChange, placeholder }) {
@@ -90,13 +89,11 @@ export default function FilterBar() {
   const resetFilters = () => {
     dispatch({
       type: 'SET_FILTERS',
-      payload: { sprint: '', component: '', assignee: '', dateFrom: '', dateTo: '', labels: [] }
+       payload: { sprint: '', component: '', assignee: '', dateFrom: '', dateTo: '' }
     });
   };
 
-  // Count active filters (handle array filters like labels)
   const activeFilterCount = Object.entries(state.filters).filter(([k, v]) => {
-    if (Array.isArray(v)) return v.length > 0;
     return v && v !== '';
   }).length;
 
@@ -114,7 +111,7 @@ export default function FilterBar() {
       animate={{ opacity: 1, y: 0 }}
       className="card mb-5"
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 overflow-x-auto">
         {/* Sprint popover */}
         <FilterPopover
           label={t('filter.sprint')}
@@ -165,11 +162,6 @@ export default function FilterBar() {
           placeholder={t('filter.toDate')}
           className={filterClass(!!state.filters.dateTo, 'w-[135px]') + ' pr-6'}
         />
-
-        {/* Label filter */}
-        {state.labelDefs && Object.keys(state.labelDefs).length > 0 && (
-          <LabelFilter />
-        )}
 
         {/* Reset — only when filters active */}
         {activeFilterCount > 0 && (

@@ -27,7 +27,7 @@ export default function TypeDoughnutChart({ tasks }) {
 
     return {
       labels: labels.map((l, i) => l + ' (' + data[i].toFixed(1) + 'h)'),
-      datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: 'var(--bg-primary)' }],
+      datasets: [{ data, backgroundColor: colors, borderWidth: 1, borderColor: colors, hoverBorderWidth: 2, hoverBorderColor: '#fff' }],
     };
   }, [tasks, t]);
 

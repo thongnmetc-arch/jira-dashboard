@@ -248,8 +248,8 @@ export default function HistoryPanel() {
                     animate={{ opacity: 1, y: 0 }}
                     className={`mt-2 text-xs px-3 py-1.5 rounded-lg ${
                       saveStatus.type === 'success'
-                        ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'
-                        : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800'
+                        ? 'bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/30'
+                        : 'bg-[var(--danger)]/10 text-[var(--danger)] border border-[var(--danger)]/30'
                     }`}
                   >
                     {saveStatus.msg}
@@ -277,7 +277,7 @@ export default function HistoryPanel() {
                         animate={{ width: `${storagePercent}%` }}
                         transition={{ duration: 0.4 }}
                         className={`h-full rounded-full ${
-                          isWarning ? 'bg-amber-500' : 'bg-[var(--accent)]'
+                          isWarning ? 'bg-[var(--warning)]' : 'bg-[var(--accent)]'
                         }`}
                       />
                     </div>
@@ -286,7 +286,7 @@ export default function HistoryPanel() {
 
                 {/* Storage warning */}
                 {isWarning && storageAvailable && (
-                  <div className="mt-2 flex items-start gap-1.5 text-xs px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400">
+                  <div className="mt-2 flex items-start gap-1.5 text-xs px-3 py-2 rounded-lg bg-[var(--warning)]/10 border border-[var(--warning)]/30 text-[var(--warning)]">
                     <span className="text-sm leading-none mt-0.5">⚠</span>
                     <span>
                       {t('history.storage')} {(storageUsage.totalKB / 1024).toFixed(1)} MB / 5 MB.
@@ -296,7 +296,7 @@ export default function HistoryPanel() {
 
                 {/* Storage disabled message */}
                 {!storageAvailable && (
-                  <div className="mt-2 flex items-start gap-1.5 text-xs px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400">
+                  <div className="mt-2 flex items-start gap-1.5 text-xs px-3 py-2 rounded-lg bg-[var(--danger)]/10 border border-[var(--danger)]/30 text-[var(--danger)]">
                     <span className="text-sm leading-none mt-0.5">✕</span>
                     <span>{t('common.error')}</span>
                   </div>
@@ -377,7 +377,7 @@ export default function HistoryPanel() {
                           </button>
                           <button
                             onClick={() => setDeleteTarget(s.id)}
-                            className="p-1 rounded text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:bg-red-50 dark:hover:bg-red-900/20 transition-all cursor-pointer"
+                            className="p-1 rounded text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-all cursor-pointer"
                             title={t('history.delete')}
                           >
                             <Trash2 className="w-3.5 h-3.5" />

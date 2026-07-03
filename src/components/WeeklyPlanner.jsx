@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronLeft,
@@ -22,7 +22,7 @@ import { fetchJiraIssues } from '../utils/jiraApi';
 const STORAGE_KEY = 'jira-dash-weekly-plan';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 const DAY_LABELS = { Mon: 'Thứ 2', Tue: 'Thứ 3', Wed: 'Thứ 4', Thu: 'Thứ 5', Fri: 'Thứ 6' };
-const MAX_HOURS_PER_DAY = 8;
+const MIN_HOURS_PER_DAY = 7;
 const TARGET_WEEKLY_HOURS = 35;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -93,7 +93,7 @@ function genId() {
 }
 
 function createDefaultTask() {
-  return { id: genId(), name: '', hours: 1, jiraKey: '', logged: false, logError: '' };
+  return { id: genId(), name: '', hours: 1, jiraKey: '', status: 'Open', issueType: '', logged: false, logError: '' };
 }
 
 function createDayPlan() {
@@ -102,6 +102,38 @@ function createDayPlan() {
 
 function createWeekPlan() {
   return { Mon: createDayPlan(), Tue: createDayPlan(), Wed: createDayPlan(), Thu: createDayPlan(), Fri: createDayPlan() };
+}
+
+// ── Workflow state machine ───────────────────────────────────────────────────
+
+function getValidTransitions(currentStatus, issueType, hasJiraKey) {
+  // Manual tasks (no JIRA key): full freedom — return null means all transitions allowed
+  if (!hasJiraKey) return null;
+
+  const s = (currentStatus || 'Open').toLowerCase();
+
+  // Terminal states — no transitions
+  if (s === 'cancelled' || s === 'closed' || s === 'resolved') return [];
+
+  if (s === 'open') {
+    return ['In Progress', 'Cancelled'];
+  }
+  if (s === 'in progress') {
+    return ['Cancelled'];
+  }
+
+  // Filter out statuses by issue type
+  const t = (issueType || '').toLowerCase();
+  const all = ['In Progress', 'Cancelled', 'Resolved', 'Closed'];
+  return all.filter(st => {
+    if (t === 'task' && st === 'Resolved') return false;
+    if (t === 'sub-task' && st === 'Closed') return false;
+    return true;
+  });
+}
+
+function getTargetStatusAfterLog(issueType) {
+  return (issueType || '').toLowerCase() === 'sub-task' ? 'Resolved' : 'Closed';
 }
 
 // ── Custom dropdown ─────────────────────────────────────────────────────────
@@ -156,69 +188,197 @@ function Dropdown({ value, onChange, options, className }) {
   );
 }
 
+// ── Status Dropdown ─────────────────────────────────────────────────────────
+
+function StatusDropdown({ value, onChange, allStatuses, disabled, transitions }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const hasValue = value && value !== 'Open';
+
+  if (disabled) {
+    return <span className="text-[9px] text-[var(--text-tertiary)] line-through">{value || 'Open'}</span>;
+  }
+  
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-1 text-[9px] px-1.5 h-5 rounded border cursor-pointer whitespace-nowrap transition-colors ${
+          hasValue
+            ? 'border-[var(--accent)]/40 bg-[var(--accent-light)] text-[var(--accent)]'
+            : 'border-[var(--border-primary)] bg-transparent text-[var(--text-secondary)] hover:border-[var(--accent)]/30'
+        }`}
+      >
+        {value || 'Open'}
+        <ChevronDown className={`w-2.5 h-2.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 w-36 max-h-48 overflow-y-auto bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-xl shadow-xl py-1">
+          {value && !(transitions != null ? transitions : allStatuses).includes(value) && (
+            <button
+              onClick={() => { onChange(value); setOpen(false); }}
+              className="w-full text-left px-2.5 py-1.5 text-[10px] text-[var(--accent)] font-medium bg-[var(--accent-light)] cursor-pointer truncate"
+            >
+              {value}
+            </button>
+          )}
+          {(transitions != null ? transitions : allStatuses).map(s => (
+            <button
+              key={s}
+              onClick={() => { onChange(s); setOpen(false); }}
+              className={`w-full text-left px-2.5 py-1.5 text-[10px] hover:bg-[var(--bg-secondary)] cursor-pointer truncate ${
+                value === s ? 'text-[var(--accent)] font-medium bg-[var(--accent-light)]' : 'text-[var(--text-primary)]'
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Hours Dropdown ──────────────────────────────────────────────────────────
+
+function HoursDropdown({ value, onChange, disabled, label }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const hoursOptions = ['0.5', '1', '1.5', '2', '2.5', '3', '3.5', '4', '4.5', '5', '5.5', '6', '6.5', '7', '7.5', '8'];
+
+  if (disabled) {
+    return <span className="text-[10px] text-[var(--text-tertiary)] line-through font-mono">{value ? `${value}h` : '-'}</span>;
+  }
+  
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        title={label}
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-1 text-[10px] px-1.5 h-5 rounded border cursor-pointer transition-colors font-mono ${
+          value
+            ? 'border-[var(--accent)]/40 bg-[var(--accent-light)] text-[var(--accent)]'
+            : 'border-[var(--border-primary)] bg-transparent text-[var(--text-secondary)] hover:border-[var(--accent)]/30'
+        }`}
+      >
+        {value}h
+        <ChevronDown className={`w-2.5 h-2.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 w-20 max-h-48 overflow-y-auto bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-xl shadow-xl py-1">
+          {hoursOptions.map(h => (
+            <button
+              key={h}
+              onClick={() => { onChange(parseFloat(h)); setOpen(false); }}
+              className={`w-full text-left px-2.5 py-1.5 text-[10px] font-mono hover:bg-[var(--bg-secondary)] cursor-pointer ${
+                value === parseFloat(h) ? 'text-[var(--accent)] font-medium bg-[var(--accent-light)]' : 'text-[var(--text-primary)]'
+              }`}
+            >
+              {h}h
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Task Card ───────────────────────────────────────────────────────────────
 
-function TaskCard({ task, day, dayDate, weekKey, onUpdate, onDelete, onLogOne }) {
+function TaskCard({ task, day, dayDate, weekKey, onUpdate, onDelete, onLogOne, allStatuses }) {
   const { t } = useI18n();
-  const [editing, setEditing] = useState(false);
+  const [logging, setLogging] = useState(false);
 
-  const logStatusIcon = task.logged ? (
-    <CheckCircle2 className="w-3 h-3 text-[var(--success)]" title={t('planner.logged')} />
-  ) : task.logError ? (
-    <AlertCircle className="w-3 h-3 text-[var(--danger)]" title={task.logError} />
-  ) : task.jiraKey ? (
-    <Clock className="w-3 h-3 text-[var(--text-tertiary)]" title={t('planner.logToJira')} />
-  ) : null;
+  const handleLogOne = async () => {
+    if (!task.jiraKey || logging) return;
+    setLogging(true);
+    try { await onLogOne(task, day, dayDate); }
+    finally { setLogging(false); }
+  };
+
+  const isCompleted = task.status && ['resolved', 'closed', 'cancelled'].includes(task.status.toLowerCase());
+  const transitions = getValidTransitions(task.status, task.issueType, !!task.jiraKey);
+  const hoursLabel = task.jiraKey && task.status?.toLowerCase() === 'in progress' ? 'Time spent' : undefined;
+
+  const statusColor = 
+    task.status === 'Done' ? 'border-[var(--success)]' :
+    task.status === 'In Progress' ? 'border-[var(--warning)]' :
+    task.status === 'Blocked' ? 'border-[var(--danger)]' : 'border-transparent';
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: -8, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -8, scale: 0.95 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
-      className="bg-white dark:bg-slate-800 shadow-sm rounded-lg p-3 border border-[var(--border-primary)] group"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      className={`bg-[var(--bg-secondary)] rounded-lg p-2 border-l-2 ${statusColor} group relative`}
     >
-      {/* Header row: name + delete */}
-      <div className="flex items-start justify-between gap-1 mb-1.5">
+      {/* Task name + delete */}
+      <div className="flex items-start gap-1">
         <input
           type="text"
           value={task.name}
           onChange={(e) => onUpdate(day, task.id, { name: e.target.value })}
-          placeholder={t('planner.addTask') + '...'}
-          className="flex-1 text-xs font-medium bg-transparent border-none outline-none p-0 text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
+          placeholder="Tên task..."
+          disabled={isCompleted}
+          className={`flex-1 min-w-0 text-[11px] font-medium bg-transparent border-none outline-none p-0 placeholder:text-[var(--text-tertiary)] ${isCompleted ? 'text-[var(--text-tertiary)] line-through cursor-not-allowed' : 'text-[var(--text-primary)]'}`}
         />
-        <button
-          onClick={() => onDelete(day, task.id)}
-          className="opacity-0 group-hover:opacity-100 text-[var(--text-tertiary)] hover:text-[var(--danger)] transition-all p-0.5 cursor-pointer"
-          title={t('common.delete')}
-        >
-          <Trash2 className="w-3 h-3" />
-        </button>
+        {!isCompleted && (
+          <button onClick={() => onDelete(day, task.id)}
+            className="opacity-0 group-hover:opacity-100 text-[var(--text-tertiary)] hover:text-[var(--danger)] transition-all flex-shrink-0"
+            title={t('common.delete')}>
+            <Trash2 className="w-3 h-3" />
+          </button>
+        )}
       </div>
 
-      {/* Row 2: hours + JIRA key + status */}
-      <div className="flex items-center gap-2">
-        {/* Hours */}
-        <div className="flex items-center gap-1">
-          <Dropdown
-            value={String(task.hours)}
-            onChange={(val) => onUpdate(day, task.id, { hours: parseFloat(val) })}
-            options={[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8].map(h => ({ value: String(h), label: h + 'h' }))}
-          />
-        </div>
-
-        {/* JIRA key */}
-        <input
-          type="text"
-          value={task.jiraKey}
-          onChange={(e) => onUpdate(day, task.id, { jiraKey: e.target.value.toUpperCase() })}
-          placeholder="KEY-123"
-          className="flex-1 text-[11px] bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded px-1.5 py-0.5 outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] font-mono min-w-0"
+      {/* Meta row: status + hours + JIRA key */}
+      <div className="flex items-center gap-1.5 mt-1.5">
+        <StatusDropdown
+          value={task.status || 'Open'}
+          onChange={(v) => onUpdate(day, task.id, { status: v })}
+          allStatuses={allStatuses}
+          disabled={isCompleted}
+          transitions={transitions}
         />
-
-        {/* Log status */}
-        <div className="flex-shrink-0">{logStatusIcon}</div>
+        
+        <HoursDropdown
+          value={task.hours}
+          onChange={(v) => onUpdate(day, task.id, { hours: v })}
+          disabled={isCompleted}
+          label={hoursLabel}
+        />
+        
+        {task.jiraKey && (
+          <span className="text-[9px] text-[var(--text-tertiary)] font-mono ml-auto">
+            {task.issueType && <span className="mr-1">{task.issueType}</span>}
+            {task.jiraKey}
+          </span>
+        )}
+        
+        {task.logged && <CheckCircle2 className="w-3 h-3 text-[var(--success)]" />}
+        {!isCompleted && task.jiraKey && !task.logged && (
+          <button onClick={handleLogOne} disabled={logging}
+            className="text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors">
+            {logging ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+          </button>
+        )}
       </div>
     </motion.div>
   );
@@ -226,56 +386,53 @@ function TaskCard({ task, day, dayDate, weekKey, onUpdate, onDelete, onLogOne })
 
 // ── Day Column ──────────────────────────────────────────────────────────────
 
-function DayColumn({ day, dayDate, tasks, weekKey, onUpdate, onDelete, onAdd }) {
+function DayColumn({ day, dayDate, tasks, weekKey, onUpdate, onDelete, onAdd, onLogOne, allStatuses }) {
   const { t } = useI18n();
   const dayTotal = tasks.reduce((s, t) => s + (t.hours || 0), 0);
-  const dateStr = formatDate(dayDate);
-  const isOver = dayTotal > MAX_HOURS_PER_DAY;
+  const isToday = new Date().toDateString() === dayDate.toDateString();
+  const isUnder = dayTotal < MIN_HOURS_PER_DAY;
 
   return (
-    <div className="flex flex-col bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-[var(--border-primary)] min-h-[300px]">
-      {/* Day header */}
-      <div className="p-3 border-b border-[var(--border-primary)] text-center">
-        <div className="text-xs font-semibold text-[var(--text-primary)]">{DAY_LABELS[day]}</div>
-        <div className="text-[11px] text-[var(--text-tertiary)]">{dateStr}</div>
-        <div className={`mt-1 text-sm font-bold font-mono ${isOver ? 'text-[var(--danger)]' : 'text-[var(--accent)]'}`}>
+    <div className={`flex flex-col rounded-xl border ${
+      isToday 
+        ? 'border-[var(--accent)] ring-1 ring-[var(--accent)]/30 shadow-md' 
+        : 'border-[var(--border-primary)] shadow-sm'
+    }`}>
+      {/* Day header — calendar style */}
+      <div className={`px-3 py-2 text-center ${isToday ? 'bg-[var(--accent-light)]' : 'bg-[var(--bg-secondary)]'}`}>
+        <div className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">{DAY_LABELS[day]}</div>
+        <div className={`text-lg font-bold font-mono mt-0.5 ${isToday ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]'}`}>
+          {String(dayDate.getDate()).padStart(2, '0')}
+        </div>
+        <div className="text-[10px] text-[var(--text-tertiary)]">
+          Tháng {dayDate.getMonth() + 1}
+        </div>
+        <div className={`mt-1.5 text-xs font-bold font-mono px-2 py-0.5 rounded-full inline-block ${
+          isUnder 
+            ? 'bg-[var(--danger)]/10 text-[var(--danger)]' 
+            : 'bg-[var(--success)]/10 text-[var(--success)]'
+        }`}>
           {dayTotal.toFixed(1)}h
         </div>
       </div>
 
       {/* Task list */}
-      <div className="flex-1 p-2 space-y-2 overflow-y-auto">
+      <div className="flex-1 p-2 pb-16 space-y-1.5 bg-[var(--bg-primary)]">
         <AnimatePresence mode="popLayout">
-          {tasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              day={day}
-              dayDate={dayDate}
-              weekKey={weekKey}
-              onUpdate={onUpdate}
-              onDelete={onDelete}
-            />
+          {tasks.map(task => (
+            <TaskCard key={task.id} task={task} day={day} dayDate={dayDate} weekKey={weekKey} onUpdate={onUpdate} onDelete={onDelete} onLogOne={onLogOne} allStatuses={allStatuses} />
           ))}
         </AnimatePresence>
 
-        {tasks.length === 0 && (
-          <div className="text-center py-6 text-[11px] text-[var(--text-tertiary)]">
-            {t('planner.noTasks')}
-          </div>
-        )}
       </div>
 
-      {/* Add button */}
-      <div className="p-2 border-t border-[var(--border-primary)]">
-        <button
-          onClick={() => onAdd(day)}
-          className="w-full flex items-center justify-center gap-1 py-1.5 text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--accent-light)] rounded-md transition-colors cursor-pointer"
-        >
-          <Plus className="w-3 h-3" />
-          <span>{t('planner.addTask')}</span>
-        </button>
-      </div>
+      {/* Add button at bottom */}
+      <button
+        onClick={() => onAdd(day)}
+        className="w-full py-2 text-[11px] font-medium text-[var(--text-tertiary)] hover:text-[var(--accent)] hover:bg-[var(--accent-light)] border-t border-[var(--border-primary)] transition-colors cursor-pointer"
+      >
+        + {t('planner.addTask')}
+      </button>
     </div>
   );
 }
@@ -298,33 +455,54 @@ export default function WeeklyPlanner() {
   const [logResults, setLogResults] = useState(null); // { success, failed }
   const [saveMessage, setSaveMessage] = useState('');
   const [loadingJira, setLoadingJira] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState('off'); // 'off' | '5' | '15' | '30' | '60'
+  const [lastSyncTime, setLastSyncTime] = useState(null);
+  const intervalRef = useRef(null);
 
-  // Load plan when week changes
+  const AUTO_REFRESH_OPTIONS = [
+    { value: 'off', label: 'Tắt' },
+    { value: '5', label: '5 phút' },
+    { value: '15', label: '15 phút' },
+    { value: '30', label: '30 phút' },
+    { value: '60', label: '1 giờ' },
+  ];
+
+  // Load JIRA tasks every time the week changes (always fetches fresh data)
   useEffect(() => {
-    const saved = loadPlan(weekKey);
-    if (saved) {
-      setPlan(saved);
-    } else {
-      setPlan(createWeekPlan());
-      loadJiraTasks();
-    }
+    loadJiraTasks();
     setLogResults(null);
     setSaveMessage('');
-  }, [weekKey]);
+  }, [weekKey]); // eslint-disable-line
+
+  // Auto-refresh interval
+  useEffect(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
+    if (autoRefresh !== 'off' && state.jiraConfig?.url) {
+      const minutes = parseInt(autoRefresh, 10);
+      if (!isNaN(minutes) && minutes > 0) {
+        intervalRef.current = setInterval(() => {
+          loadJiraTasks();
+        }, minutes * 60 * 1000);
+      }
+    }
+    
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [autoRefresh, state.jiraConfig]);
 
   // ── Load JIRA tasks ──
 
-  const loadJiraTasks = useCallback(async (force = false) => {
+  const loadJiraTasks = useCallback(async () => {
     const { url, assignee, token, projectKey, jql } = state.jiraConfig || {};
     if (!url || !token || !projectKey) return;
-
-    // Auto-load: skip if we already have a saved plan with data (unless forced)
-    if (!force) {
-      const existing = loadPlan(weekKey);
-      if (existing && Object.values(existing).some(arr => arr.length > 0)) {
-        return;
-      }
-    }
 
     setLoadingJira(true);
     try {
@@ -370,6 +548,8 @@ export default function WeeklyPlanner() {
           name: t.summary || t.key,
           hours: Math.round((t.timeSpentHr || t.estimateHr || 1) * 2) / 2,
           jiraKey: t.key,
+          status: t.status || 'Open',
+          issueType: t.issueType || 'Task',
           logged: false,
           logError: '',
         });
@@ -380,14 +560,30 @@ export default function WeeklyPlanner() {
       if (existingPlan) {
         const merged = { ...existingPlan };
         for (const day of DAYS) {
+          const jiraTaskMap = {};
+          (newPlan[day] || []).forEach(t => {
+            if (t.jiraKey) jiraTaskMap[t.jiraKey] = t;
+          });
+
+          // Update existing tasks with fresh JIRA data (status, hours, name), keep manual tasks
+          merged[day] = (existingPlan[day] || []).map(t => {
+            if (t.jiraKey && jiraTaskMap[t.jiraKey]) {
+              const fresh = jiraTaskMap[t.jiraKey];
+              return { ...t, status: fresh.status || t.status, name: fresh.name, hours: fresh.hours, logged: false };
+            }
+            return t;
+          });
+
+          // Add new JIRA tasks that don't exist yet
           const existingKeys = new Set((existingPlan[day] || []).map(t => t.jiraKey));
-          const newForDay = (newPlan[day] || []).filter(t => !existingKeys.has(t.jiraKey));
-          merged[day] = [...(existingPlan[day] || []), ...newForDay];
+          const newForDay = (newPlan[day] || []).filter(t => t.jiraKey && !existingKeys.has(t.jiraKey));
+          merged[day] = [...merged[day], ...newForDay];
         }
         setPlan(merged);
       } else {
         setPlan(newPlan);
       }
+      setLastSyncTime(new Date());
     } catch (err) {
       console.error('Failed to load JIRA tasks:', err);
     } finally {
@@ -442,6 +638,7 @@ export default function WeeklyPlanner() {
 
   const handleSave = useCallback(() => {
     savePlan(weekKey, plan);
+    setLastSyncTime(new Date());
     setSaveMessage(t('planner.logged'));
     setTimeout(() => setSaveMessage(''), 2000);
   }, [weekKey, plan, t]);
@@ -518,6 +715,45 @@ export default function WeeklyPlanner() {
     }
   }, [plan, monday, state.jiraConfig, t]);
 
+  // ── Log single task ──
+
+  const handleLogOne = useCallback(async (task, day, dayDate) => {
+    const { url, token } = state.jiraConfig || {};
+    if (!url || !token || !task.jiraKey) return;
+
+    const started = new Date(dayDate);
+    started.setHours(9, 0, 0, 0);
+
+    try {
+      await logMultipleWorklogs(url, state.jiraConfig.assignee || '', token, [{
+        issueKey: task.jiraKey,
+        timeSpent: task.hours + 'h',
+        comment: task.name || 'Worklog from JIRA Dashboard',
+        startedDate: formatISODate(started),
+        day,
+        taskId: task.id,
+      }]);
+
+      // Mark as logged and update status to target state
+      const targetStatus = getTargetStatusAfterLog(task.issueType);
+      setPlan(prev => {
+        const next = { ...prev };
+        next[day] = (prev[day] || []).map(t =>
+          t.id === task.id ? { ...t, logged: true, logError: '', status: targetStatus } : t
+        );
+        return next;
+      });
+    } catch (err) {
+      setPlan(prev => {
+        const next = { ...prev };
+        next[day] = (prev[day] || []).map(t =>
+          t.id === task.id ? { ...t, logged: false, logError: err.message || 'Lỗi' } : t
+        );
+        return next;
+      });
+    }
+  }, [state.jiraConfig]);
+
   // ── Computed totals ──
 
   const dayTotals = DAYS.map((day) => {
@@ -525,14 +761,22 @@ export default function WeeklyPlanner() {
     return tasks.reduce((s, t) => s + (t.hours || 0), 0);
   });
   const totalHours = dayTotals.reduce((s, h) => s + h, 0);
+  const totalTasks = DAYS.reduce((s, day) => s + (plan[day] || []).length, 0);
   const progressPct = Math.min((totalHours / TARGET_WEEKLY_HOURS) * 100, 100);
 
   const mondayDate = monday;
   const fridayDate = new Date(monday);
   fridayDate.setDate(fridayDate.getDate() + 4);
 
-  const isCurrentWeek =
-    getMonday(new Date()).getTime() === monday.getTime();
+  const allStatuses = useMemo(() => {
+    const set = new Set();
+    DAYS.forEach(day => {
+      (plan[day] || []).forEach(t => {
+        if (t.status) set.add(t.status);
+      });
+    });
+    return ['Open', ...Array.from(set).filter(s => s !== 'Open')];
+  }, [plan]);
 
   return (
     <motion.div
@@ -541,75 +785,74 @@ export default function WeeklyPlanner() {
       exit={{ opacity: 0, y: 8 }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
     >
-      {/* ── Header: Week navigation ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <div className="flex items-center gap-3">
-          <h2 className="text-base font-bold text-[var(--text-primary)]">{t('planner.title')}</h2>
-
-          <div className="flex items-center gap-1">
-            <button
-              onClick={goPrevWeek}
-              className="p-1.5 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--accent)] transition-colors cursor-pointer"
-              title={t('planner.logToJira')}
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={goCurrentWeek}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                isCurrentWeek
-                  ? 'bg-[var(--accent)] text-white'
-                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              {formatDate(mondayDate)} - {formatDate(fridayDate)}
-            </button>
-
-            <button
-              onClick={goNextWeek}
-              className="p-1.5 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--accent)] transition-colors cursor-pointer"
-              title={t('planner.logToJira')}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
+      {/* ── Header: Calendar-style week title ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-[var(--text-secondary)]">
-            {t('planner.target')}: <strong className="text-[var(--text-primary)]">{totalHours.toFixed(1)}h</strong> / {TARGET_WEEKLY_HOURS}h
-          </span>
-          <div className="w-24 h-2 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: progressPct + '%' }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
-              className={`h-full rounded-full ${progressPct >= 100 ? 'bg-[var(--success)]' : 'bg-[var(--accent)]'}`}
-            />
-          </div>
-        </div>
-
-        {/* JIRA actions */}
-        <div className="flex items-center gap-2">
-          {!state.jiraConfig?.url || !state.jiraConfig?.token ? (
-            <span className="text-[11px] text-[var(--text-tertiary)] italic">{t('planner.error')}</span>
-          ) : (
-            <button
-              onClick={() => loadJiraTasks(true)}
-              disabled={loadingJira}
-              className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border-primary)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-              title={t('planner.logToJira')}
-            >
-              {loadingJira ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-              {t('planner.addTask')}
-            </button>
-          )}
+          <button onClick={goPrevWeek} className="p-1.5 rounded-lg hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)]"><ChevronLeft className="w-4 h-4" /></button>
+          <button onClick={goCurrentWeek} className="px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-sm font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]">
+            📅 {formatDate(mondayDate)} – {formatDate(fridayDate)}
+          </button>
+          <button onClick={goNextWeek} className="p-1.5 rounded-lg hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)]"><ChevronRight className="w-4 h-4" /></button>
         </div>
       </div>
 
+      {/* ── Sync status row ── */}
+      {state.jiraConfig?.url && (
+        <div className="flex flex-wrap items-center gap-3 px-3 py-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)]/50 mb-4">
+          {/* Sync status */}
+          <div className="flex items-center gap-2 text-xs text-[var(--text-tertiary)]">
+            <RefreshCw className="w-3 h-3" />
+            {lastSyncTime ? (
+              <span>Đồng bộ lúc {lastSyncTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+            ) : (
+              <span>Chưa đồng bộ</span>
+            )}
+          </div>
+          
+          <div className="flex-1" />
+          
+          {/* Progress bar */}
+          <span className="text-xs text-[var(--text-secondary)] whitespace-nowrap">
+            <strong className="text-[var(--text-primary)]">{totalHours.toFixed(1)}h</strong> / {TARGET_WEEKLY_HOURS}h
+          </span>
+          <div className="w-28 h-2 bg-[var(--bg-primary)] rounded-full overflow-hidden">
+            <motion.div initial={{width:0}} animate={{width:progressPct+'%'}} transition={{duration:0.5}}
+              className={`h-full rounded-full ${progressPct>=100 ? 'bg-[var(--success)]' : 'bg-[var(--accent)]'}`} />
+          </div>
+          
+          {/* Log result inline (compact) */}
+          {logResults && (
+            <span className={`text-xs px-2 py-0.5 rounded-full ${
+              logResults.failed.length === 0 
+                ? 'bg-[var(--success)]/10 text-[var(--success)]' 
+                : 'bg-[var(--danger)]/10 text-[var(--danger)]'
+            }`}>
+              {logResults.success.length > 0 && `${logResults.success.length} ✅ `}
+              {logResults.failed.length > 0 && `${logResults.failed.length} ❌`}
+            </span>
+          )}
+          
+          {/* Sync now button */}
+          <button onClick={loadJiraTasks} disabled={loadingJira}
+            className="h-7 text-xs px-2.5 rounded-md border border-[var(--border-primary)] hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] transition-colors disabled:opacity-50 flex items-center gap-1">
+            {loadingJira ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+            Đồng bộ
+          </button>
+          
+          {/* Auto-refresh — force same h-7 */}
+          <div className="h-7">
+            <Dropdown
+              value={autoRefresh}
+              onChange={setAutoRefresh}
+              options={AUTO_REFRESH_OPTIONS}
+              className="h-7"
+            />
+          </div>
+        </div>
+      )}
+
       {/* ── Day columns ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-5 gap-3 mb-6 overflow-x-auto pb-2">
         {DAYS.map((day, idx) => {
           const dayDate = computeDayDate(monday, idx);
           return (
@@ -622,63 +865,21 @@ export default function WeeklyPlanner() {
               onUpdate={updateTask}
               onDelete={deleteTask}
               onAdd={addTask}
+              onLogOne={handleLogOne}
+              allStatuses={allStatuses}
             />
           );
         })}
       </div>
 
-      {/* ── Log results ── */}
-      {logResults && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={`mb-4 p-3 rounded-lg border text-xs ${
-            logResults.failed.length === 0 || logResults.success.length > 0
-              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300'
-              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
-          }`}
-        >
-          {logResults.success.length > 0 && (
-            <p>{t('planner.logged')} {logResults.success.length} {t('planner.hours')}</p>
-          )}
-          {logResults.failed.length > 0 && (
-            <div className="mt-1">
-              <p className="font-medium">{t('common.error')}: {logResults.failed.length}</p>
-              <ul className="list-disc list-inside mt-0.5">
-                {logResults.failed.map((f, i) => (
-                  <li key={i}>
-                    {f.issueKey && <strong>{f.issueKey}</strong>}
-                    {f.issueKey ? ': ' : ''}
-                    {f.error}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </motion.div>
-      )}
-
       {/* ── Bottom actions ── */}
-      <div className="flex flex-wrap items-center gap-3 p-4 bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-lg">
-        {/* Progress bar */}
-        <div className="flex items-center gap-3 flex-1 min-w-[200px]">
-          <span className="text-xs text-[var(--text-secondary)] whitespace-nowrap">
-            <strong className="text-[var(--text-primary)]">{totalHours.toFixed(1)}h</strong> / {TARGET_WEEKLY_HOURS}h
-          </span>
-          <div className="flex-1 h-2 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: progressPct + '%' }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
-              className={`h-full rounded-full ${progressPct >= 100 ? 'bg-[var(--success)]' : 'bg-[var(--accent)]'}`}
-            />
-          </div>
-          <span className="text-[11px] text-[var(--text-tertiary)] whitespace-nowrap font-mono">
-            {progressPct.toFixed(0)}%
-          </span>
+      <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-lg">
+        {/* Summary */}
+        <div className="text-xs text-[var(--text-tertiary)]">
+          {totalTasks} {t('common.tasks')} · {totalHours.toFixed(1)}h
         </div>
 
-        {/* Save button */}
+        {/* Actions */}
         <div className="flex items-center gap-2">
           {saveMessage && (
             <motion.span
@@ -693,7 +894,7 @@ export default function WeeklyPlanner() {
 
           <button
             onClick={handleSave}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
           >
             <Save className="w-3.5 h-3.5" />
             <span>{t('planner.save')}</span>
@@ -703,7 +904,7 @@ export default function WeeklyPlanner() {
           <button
             onClick={handleLogAll}
             disabled={logging}
-            className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium rounded-lg bg-[var(--accent)] text-white hover:opacity-90 disabled:opacity-50 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-5 py-2 text-xs font-medium rounded-lg bg-[var(--accent)] text-white hover:opacity-90 disabled:opacity-50 transition-all cursor-pointer shadow-sm"
           >
             {logging ? (
               <>

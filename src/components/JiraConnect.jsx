@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Wifi, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, LogIn, LogOut, ArrowLeft, ArrowRight } from 'lucide-react';
+import StepIndicator from './StepIndicator';
 import { useApp } from '../context/AppContext';
 import { useI18n } from '../i18n';
 import { testJiraConnection, fetchJiraIssues } from '../utils/jiraApi';
@@ -305,9 +306,9 @@ export default function JiraConnect({ mode, onConnected, onBack }) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
-      className={`w-full max-w-lg mx-auto ${isWizard ? 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-slate-800 rounded-2xl p-0.5 shadow-xl border border-slate-200 dark:border-slate-700' : ''}`}
+      className={`w-full max-w-lg mx-auto ${isWizard ? 'bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-2xl p-0.5 shadow-xl' : ''}`}
     >
-      <div className={`space-y-4 ${isWizard ? 'bg-white dark:bg-slate-800 rounded-2xl p-6' : ''}`}>
+      <div className={`space-y-4 ${isWizard ? 'bg-[var(--bg-primary)] rounded-2xl p-6' : ''}`}>
         {isWizard && (
           <>
             {/* Back button */}
@@ -323,34 +324,16 @@ export default function JiraConnect({ mode, onConnected, onBack }) {
 
             {/* Step title */}
             <div className="text-center mb-2">
-              {/* Step indicator */}
-              <div className="flex items-center justify-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/20">
-                  <span className="text-xs font-bold text-white">1</span>
-                </div>
-                <div className="w-6 h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full" />
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/20 ring-2 ring-blue-500/40">
-                  <span className="text-xs font-bold text-white">2</span>
-                </div>
-                <div className="w-6 h-0.5 bg-slate-300 dark:bg-slate-600 rounded-full" />
-                <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">3</span>
-                </div>
-                <div className="w-6 h-0.5 bg-slate-300 dark:bg-slate-600 rounded-full" />
-                <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">4</span>
-                </div>
-              </div>
+              <StepIndicator currentStep="connect" />
               <h2 className="text-xl font-bold text-[var(--text-primary)]">{t('connect.title')}</h2>
-              <p className="text-sm text-[var(--text-tertiary)] mt-1">Bước 2/4</p>
             </div>
           </>
         )}
 
         {/* Previously connected info (dashboard mode only) */}
         {!isWizard && state.jiraConnected && state.jiraConfig.projectKey && (
-          <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 text-sm flex items-start gap-2.5 shadow-sm">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
+          <div className="p-4 rounded-xl bg-[var(--success)]/10 border border-[var(--success)]/30 text-sm flex items-start gap-2.5 shadow-sm">
+            <CheckCircle2 className="w-4 h-4 text-[var(--success)] mt-0.5 flex-shrink-0" />
             <div className="text-[var(--text-primary)]">
               {t('connect.connected')} <strong>{state.jiraConfig.projectKey}</strong> (
               <span className="text-[var(--text-secondary)]">{state.jiraConfig.url}</span>)
@@ -379,15 +362,15 @@ export default function JiraConnect({ mode, onConnected, onBack }) {
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 text-sm flex items-start gap-3"
+            className="p-4 rounded-xl bg-[var(--success)]/10 border border-[var(--success)]/30 text-sm flex items-start gap-3"
           >
-            <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-800/40 flex items-center justify-center flex-shrink-0">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <div className="w-8 h-8 rounded-full bg-[var(--success)]/20 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-4 h-4 text-[var(--success)]" />
             </div>
             <div>
-              <span className="font-semibold text-emerald-700 dark:text-emerald-300">{t('common.success')}</span>
+              <span className="font-semibold text-[var(--success)]">{t('common.success')}</span>
               <br />
-              <span className="text-xs text-emerald-600/70 dark:text-emerald-400/70">
+              <span className="text-xs text-[var(--success)]/70">
                 {t('connect.title')} — OK
               </span>
             </div>
@@ -396,20 +379,20 @@ export default function JiraConnect({ mode, onConnected, onBack }) {
 
         {/* Electron: In-app JIRA login (SSO) */}
         {window.electronAPI?.isElectron && (
-          <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-200 dark:border-blue-800 shadow-sm">
+          <div className="p-4 rounded-xl bg-[var(--accent-light)] border border-[var(--accent)]/30 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
-              <LogIn className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <span className="text-sm font-semibold text-blue-800 dark:text-blue-300">
+              <LogIn className="w-4 h-4 text-[var(--accent)]" />
+              <span className="text-sm font-semibold text-[var(--accent)]">
                 {t('connect.title')} (SSO)
               </span>
               {cookieLoginStatus === 'loggedin' && (
-                <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full ml-auto">
+                <span className="text-xs bg-[var(--success)]/10 text-[var(--success)] px-2 py-0.5 rounded-full ml-auto">
                   {t('common.success')}
                 </span>
               )}
             </div>
 
-            <p className="text-xs text-blue-600 dark:text-blue-400 mb-3">
+            <p className="text-xs text-[var(--accent)] mb-3">
               {t('connect.title')} — {t('connect.optional')}
             </p>
 
@@ -420,13 +403,13 @@ export default function JiraConnect({ mode, onConnected, onBack }) {
                     value={form.projectKey}
                     onChange={(e) => handleFormChange('projectKey', e.target.value.toUpperCase())}
                     placeholder="BXDBE"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all uppercase"
+                    className="w-full px-3.5 py-2.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl font-mono text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] transition-all uppercase"
                     disabled={connecting}
                   />
                   <button
                     onClick={() => handleCookieFetchData(form.projectKey)}
                     disabled={connecting || !form.projectKey.trim()}
-                    className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shadow-blue-500/20"
+                    className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shadow-[var(--accent)]/20"
                 >
                   {connecting ? (
                     <>
@@ -445,7 +428,7 @@ export default function JiraConnect({ mode, onConnected, onBack }) {
                     await window.electronAPI.jiraLogout();
                     setCookieLoginStatus(null);
                   }}
-                  className="w-full py-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer flex items-center justify-center gap-1"
+                  className="w-full py-1.5 text-xs text-[var(--accent)] hover:underline cursor-pointer flex items-center justify-center gap-1"
                 >
                   <LogOut className="w-3 h-3" />
                   {t('common.logout')}
@@ -455,7 +438,7 @@ export default function JiraConnect({ mode, onConnected, onBack }) {
                 <button
                   onClick={handleCookieLogin}
                   disabled={cookieLoginStatus === 'loading'}
-                  className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shadow-blue-500/20"
+                  className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shadow-[var(--accent)]/20"
               >
                 {cookieLoginStatus === 'loading' ? (
                   <>
@@ -483,7 +466,7 @@ export default function JiraConnect({ mode, onConnected, onBack }) {
             value={form.url}
             onChange={(e) => handleFormChange('url', e.target.value)}
             placeholder="https://jira.company.com"
-            className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all"
+            className="w-full px-3.5 py-2.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl font-mono text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] transition-all"
             disabled={connecting}
           />
         </div>
@@ -500,7 +483,7 @@ export default function JiraConnect({ mode, onConnected, onBack }) {
               onChange={(e) => handleFormChange('token', e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleConnect(); }}
               placeholder={t('connect.token')}
-              className="w-full pr-10 px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all"
+              className="w-full pr-10 px-3.5 py-2.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl font-mono text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] transition-all"
               disabled={connecting}
             />
             <button
@@ -525,7 +508,7 @@ export default function JiraConnect({ mode, onConnected, onBack }) {
               onChange={(e) => handleFormChange('jql', e.target.value)}
               placeholder={t('query.jqlPlaceholder')}
               rows={3}
-              className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 resize-none font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-all"
+              className="w-full px-3.5 py-2.5 text-sm bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] resize-none font-mono text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-all"
               disabled={connecting}
             />
             <p className="text-[10px] text-[var(--text-tertiary)] mt-1">{t('query.emptyJql')}</p>
@@ -545,7 +528,7 @@ export default function JiraConnect({ mode, onConnected, onBack }) {
           <button
             onClick={handleConnect}
             disabled={connecting}
-            className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+            className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-[var(--accent)]/20"
           >
             {connecting ? (
               <>
@@ -570,7 +553,7 @@ export default function JiraConnect({ mode, onConnected, onBack }) {
           >
             <button
               onClick={handleProceed}
-              className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white rounded-xl font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+              className="w-full py-2.5 bg-[var(--success)] hover:opacity-90 text-white rounded-xl font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-[var(--success)]/20"
             >
               <ArrowRight className="w-4 h-4" />
               {t('connect.connectBtn')}

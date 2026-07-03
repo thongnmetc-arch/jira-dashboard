@@ -27,7 +27,6 @@ const initialState = {
   labelDefs: {},
   labelAssignments: {},
   autoRules: [],
-  labelPanelOpen: false,
   // History Manager state
   historyPanelOpen: false,
   // Bookmarklet Panel state
@@ -96,7 +95,6 @@ function reducer(state, action) {
         labelDefs: state.labelDefs,
         labelAssignments: state.labelAssignments,
         autoRules: state.autoRules,
-        labelPanelOpen: false,
       };
     case 'SET_ERROR':
       return { ...state, error: action.payload, loading: false };
@@ -196,8 +194,6 @@ function reducer(state, action) {
     }
     case 'SET_AUTO_RULES':
       return { ...state, autoRules: action.payload };
-    case 'SET_LABEL_PANEL_OPEN':
-      return { ...state, labelPanelOpen: action.payload };
     case 'ASSIGN_LABEL': {
       const { taskKey, labelId } = action.payload;
       const current = state.labelAssignments[taskKey] || [];

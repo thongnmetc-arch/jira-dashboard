@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { fetchProjects } from '../utils/jiraApi';
 import { useI18n } from '../i18n';
+import StepIndicator from './StepIndicator';
 
 // ── Color palette for project avatars ──
 const AVATAR_COLORS = [
@@ -115,7 +116,7 @@ export default function ProjectSelector({ jiraConfig, onSelect, onBack, reselect
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="w-full max-w-5xl mx-auto flex flex-col bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-lg p-6"
+      className="w-full max-w-5xl mx-auto flex flex-col bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-2xl shadow-lg p-6"
       style={{ height: 'calc(100vh - 6rem)' }}
     >
       {/* HEADER — fixed */}
@@ -133,25 +134,25 @@ export default function ProjectSelector({ jiraConfig, onSelect, onBack, reselect
 
         {/* Step title */}
         <div className="text-center mb-1">
+          {!reselect && <StepIndicator currentStep="project" />}
           <h2 className={`font-bold text-[var(--text-primary)] ${
             reselect ? 'text-lg' : 'text-xl'
           }`}>
             {reselect ? t('projects.switchProject') : t('projects.title')}
           </h2>
-          <p className="text-sm text-[var(--text-tertiary)] mt-1">{reselect ? '' : t('projects.step3')}</p>
         </div>
 
         {/* JIRA connection info */}
         {jiraConfig && (
-          <div className="flex items-center justify-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-full border border-emerald-200 dark:border-emerald-800/40">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          <div className="flex items-center justify-center gap-2 text-xs text-[var(--success)] bg-[var(--success)]/10 px-3 py-1.5 rounded-full border border-[var(--success)]/30">
+            <span className="w-2 h-2 rounded-full bg-[var(--success)]" />
             {t('projects.connected')}{jiraConfig.url}
           </div>
         )}
 
         {/* Error */}
         {error && (
-          <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 text-sm flex items-start gap-2.5 shadow-sm">
+          <div className="p-4 rounded-xl bg-[var(--danger)]/10 border border-[var(--danger)]/30 text-sm flex items-start gap-2.5 shadow-sm">
             <AlertCircle className="w-4 h-4 text-[var(--danger)] mt-0.5 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <span className="text-[var(--danger)] whitespace-pre-line">
@@ -180,7 +181,7 @@ export default function ProjectSelector({ jiraConfig, onSelect, onBack, reselect
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('projects.searchPlaceholder')}
               style={{ paddingLeft: '2.75rem' }}
-              className="w-full pr-4 py-2.5 bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-sm"
+              className="w-full pr-4 py-2.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl text-sm font-mono text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20 transition-all shadow-sm"
             />
           </div>
         ) : null}
@@ -247,10 +248,10 @@ export default function ProjectSelector({ jiraConfig, onSelect, onBack, reselect
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.98 }}
                        className={`relative p-4 rounded-xl border text-left transition-all cursor-pointer ${
-                          isSelected
-                            ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50/50 dark:from-blue-500/10 dark:to-indigo-500/5 ring-2 ring-blue-500/30 shadow-md shadow-blue-500/10'
-                            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-gradient-to-br hover:from-blue-50/50 hover:to-indigo-50/50 dark:hover:from-blue-900/10 dark:hover:to-indigo-900/5 hover:border-blue-400/50 hover:shadow-lg hover:shadow-blue-500/5'
-                        }`}
+                           isSelected
+                             ? 'border-[var(--accent)] bg-[var(--accent-light)] ring-2 ring-[var(--accent)]/30 shadow-md shadow-[var(--accent)]/10'
+                             : 'border-[var(--border-primary)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] hover:border-[var(--accent)]/50 hover:shadow-lg hover:shadow-[var(--accent)]/5'
+                         }`}
                     >
                       <div className="flex items-center gap-3">
                         {/* Colored avatar circle with first 2 letters of key */}
@@ -286,7 +287,7 @@ export default function ProjectSelector({ jiraConfig, onSelect, onBack, reselect
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
-                          className="absolute -top-1.5 -right-1.5 w-7 h-7 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30"
+                          className="absolute -top-1.5 -right-1.5 w-7 h-7 rounded-full bg-[var(--accent)] flex items-center justify-center shadow-lg shadow-[var(--accent)]/30"
                         >
                           <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
                         </motion.div>
@@ -301,12 +302,12 @@ export default function ProjectSelector({ jiraConfig, onSelect, onBack, reselect
       </div>
 
       {/* FOOTER — fixed at bottom */}
-      <div className="flex-shrink-0 pt-3 pb-3 border-t border-slate-200 dark:border-slate-700">
+      <div className="flex-shrink-0 pt-3 pb-3">
         <div className="flex items-center justify-end gap-3 px-2">
           {!reselect && (
             <button
               onClick={onBack}
-              className="px-8 py-2.5 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-300 rounded-xl font-medium text-sm transition-all cursor-pointer flex items-center gap-2"
+              className="px-8 py-2.5 border border-[var(--border-primary)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-xl font-medium text-sm transition-all cursor-pointer flex items-center gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
               {t('projects.back')}
@@ -315,7 +316,7 @@ export default function ProjectSelector({ jiraConfig, onSelect, onBack, reselect
           <button
             onClick={handleContinue}
             disabled={!selected}
-            className="px-8 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+            className="px-8 py-2.5 bg-[var(--accent)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-[var(--accent)]/20"
           >
             <ArrowRight className="w-4 h-4" />
             {t('projects.next')}

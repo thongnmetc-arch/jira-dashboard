@@ -10,6 +10,16 @@ import Dashboard from './components/Dashboard';
 import WeeklyPlanner from './components/WeeklyPlanner';
 import LoginScreen from './components/LoginScreen';
 import { fetchJiraIssues } from './utils/jiraApi';
+import { isPasswordSet } from './utils/authUtils';
+
+// ── Auth guard ──────────────────────────────────────────────────
+
+function ProtectedRoute({ children }) {
+  if (!isPasswordSet()) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
 
 // ── Shared content component (used in both existing and wizard dashboard flows) ──
 
@@ -315,13 +325,13 @@ export default function App() {
     <AppProvider>
       <Routes>
         <Route path="/login" element={<LoginRoute />} />
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="/connect" element={<ConnectRoute />} />
-        <Route path="/projects" element={<ProjectsRoute />} />
-        <Route path="/query" element={<QueryRoute />} />
-        <Route path="/dashboard" element={<DashboardRoute />} />
-        <Route path="/dashboard/:tab" element={<DashboardRoute />} />
-        <Route path="/weekly-planner" element={<WeeklyPlannerRoute />} />
+        <Route path="/" element={<ProtectedRoute><Navigate to="/connect" replace /></ProtectedRoute>} />
+        <Route path="/connect" element={<ProtectedRoute><ConnectRoute /></ProtectedRoute>} />
+        <Route path="/projects" element={<ProtectedRoute><ProjectsRoute /></ProtectedRoute>} />
+        <Route path="/query" element={<ProtectedRoute><QueryRoute /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><DashboardRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/:tab" element={<ProtectedRoute><DashboardRoute /></ProtectedRoute>} />
+        <Route path="/weekly-planner" element={<ProtectedRoute><WeeklyPlannerRoute /></ProtectedRoute>} />
       </Routes>
     </AppProvider>
   );

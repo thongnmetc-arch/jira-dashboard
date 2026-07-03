@@ -535,6 +535,29 @@ function parseJiraIssue(issue) {
     }).filter(Boolean);
   }
 
+  // Start date — try common custom field IDs
+  let startDate = null;
+  const startDateIds = ['customfield_10300', 'customfield_10015', 'customfield_10105'];
+  for (const id of startDateIds) {
+    if (fields[id]) {
+      const val = fields[id];
+      if (typeof val === 'string') {
+        const d = new Date(val);
+        if (!isNaN(d.getTime())) { startDate = d; break; }
+      } else if (val instanceof Date) {
+        startDate = val; break;
+      }
+    }
+  }
+
+  // Due date — system field and custom field
+  let dueDate = fields.duedate ? new Date(fields.duedate) : null;
+  let dueDateTime = null;
+  if (fields['customfield_10302']) {
+    const val = fields['customfield_10302'];
+    dueDateTime = typeof val === 'string' ? new Date(val) : val;
+  }
+
   // Get component names
   const comps = (fields.components || []).map(c => c?.name || '').filter(Boolean);
 
@@ -560,7 +583,9 @@ function parseJiraIssue(issue) {
     originalEstimateHr: (fields.timeoriginalestimate || 0) / 3600,
     created: createdDate,
     resolved: resolvedDate,
-    startDate: createdDate, // fallback to created when no custom start date
+    startDate, // from custom field mapping
+    dueDate: dueDate || null,
+    dueDateTime: dueDateTime || null,
     labels: fields.labels || [],
   };
 }

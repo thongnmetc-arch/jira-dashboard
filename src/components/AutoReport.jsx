@@ -314,7 +314,7 @@ export default function AutoReport() {
               onClick={toggleReminder}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg border transition-colors cursor-pointer ${
                 reminderEnabled
-                  ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800'
+                  ? 'bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/30'
                   : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)]'
               }`}
             >

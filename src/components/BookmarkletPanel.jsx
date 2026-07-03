@@ -41,7 +41,7 @@ function getBookmarkletCode(projectKey, jql, dashboardUrl) {
           timeSpentSec:f.timespent||0,timeSpentHr:(f.timespent||0)/3600,
           originalEstimateSec:f.timeoriginalestimate||0,originalEstimateHr:(f.timeoriginalestimate||0)/3600,
           estimateSec:f.timeestimate||0,estimateHr:(f.timeestimate||0)/3600,
-          created:f.created||null,resolved:f.resolutiondate||null,startDate:f.created||null
+          created:f.created||null,resolved:f.resolutiondate||null,startDate:null
         };
       });
       var p={tasks:t,project:PROJECT,jql:JQL,timestamp:new Date().toISOString(),count:t.length};
@@ -132,7 +132,7 @@ export default function BookmarkletPanel() {
               {/* Intro */}
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-sm font-semibold text-[var(--text-secondary)]">{t('bookmarklet.noToken')}</span>
-                <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">{t('bookmarklet.oneTime')}</span>
+                <span className="text-xs bg-[var(--success)]/10 text-[var(--success)] px-2 py-0.5 rounded-full">{t('bookmarklet.oneTime')}</span>
               </div>
 
               <p className="text-xs text-[var(--text-tertiary)]">
@@ -149,14 +149,14 @@ export default function BookmarkletPanel() {
                   value={jql}
                   onChange={(e) => setJql(e.target.value)}
                   placeholder='VD: project = "BXDBE" AND status != Cancelled ORDER BY created DESC'
-                  className="w-full text-xs bg-white dark:bg-slate-900 border border-[var(--border-primary)] rounded-lg px-3 py-2 focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]"
+                  className="w-full text-xs bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-lg px-3 py-2 focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]"
                 />
                 <p className="text-[10px] text-[var(--text-tertiary)] mt-1">{t('bookmarklet.jqlDefault')}</p>
               </div>
 
               {/* Step 1: Copy code */}
-              <div className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                <p className="text-sm font-semibold text-green-800 dark:text-green-300 mb-2">
+              <div className="bg-[var(--success)]/10 border border-[var(--success)]/30 rounded-lg p-4">
+                <p className="text-sm font-semibold text-[var(--success)] mb-2">
                   {t('bookmarklet.step1')}
                 </p>
                 <div className="relative">
@@ -164,7 +164,7 @@ export default function BookmarkletPanel() {
                     readOnly
                     value={getBookmarkletCode(state.jiraConfig.projectKey, jql, window.location.origin)}
                     rows={4}
-                    className="w-full text-xs font-mono bg-white dark:bg-slate-900 border border-green-300 dark:border-green-700 rounded-lg p-3 resize-none focus:outline-none text-[var(--text-primary)]"
+                    className="w-full text-xs font-mono bg-[var(--bg-primary)] border border-[var(--success)]/50 rounded-lg p-3 resize-none focus:outline-none text-[var(--text-primary)]"
                     onClick={(e) => e.target.select()}
                   />
                   <button
@@ -174,7 +174,7 @@ export default function BookmarkletPanel() {
                       setCopied(true);
                       setTimeout(() => setCopied(false), 2000);
                     }}
-                    className="absolute top-2 right-2 text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition-colors font-medium cursor-pointer"
+                    className="absolute top-2 right-2 text-xs bg-[var(--success)] hover:opacity-90 text-white px-3 py-1.5 rounded-lg transition-colors font-medium cursor-pointer"
                   >
                     {copied ? t('bookmarklet.copied') : t('bookmarklet.copy')}
                   </button>
@@ -182,11 +182,11 @@ export default function BookmarkletPanel() {
               </div>
 
               {/* Step 2: Create bookmark */}
-              <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <p className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-2">
+              <div className="bg-[var(--accent-light)] border border-[var(--accent)]/30 rounded-lg p-4">
+                <p className="text-sm font-semibold text-[var(--accent)] mb-2">
                   {t('bookmarklet.step2')}
                 </p>
-                <ol className="list-decimal pl-4 space-y-2 text-xs text-blue-700 dark:text-blue-400">
+                <ol className="list-decimal pl-4 space-y-2 text-xs text-[var(--accent)]">
                   <li>{t('bookmarklet.step2')}</li>
                   <li>{t('bookmarklet.step1')}</li>
                   <li>{t('bookmarklet.step3')}</li>
@@ -194,11 +194,11 @@ export default function BookmarkletPanel() {
               </div>
 
               {/* Step 3: Use */}
-              <div className="bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
-                <p className="text-sm font-semibold text-purple-800 dark:text-purple-300 mb-2">
+              <div className="bg-[var(--accent-light)] border border-[var(--accent)]/30 rounded-lg p-4">
+                <p className="text-sm font-semibold text-[var(--accent)] mb-2">
                   {t('bookmarklet.step3')}
                 </p>
-                <ol className="list-decimal pl-4 space-y-1 text-xs text-purple-700 dark:text-purple-400">
+                <ol className="list-decimal pl-4 space-y-1 text-xs text-[var(--accent)]">
                   <li>{t('bookmarklet.step2')}</li>
                   <li>{t('bookmarklet.step3')}</li>
                   <li>{t('bookmarklet.title')}</li>
@@ -206,7 +206,7 @@ export default function BookmarkletPanel() {
               </div>
 
               <div className="text-xs text-[var(--text-tertiary)] flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                <span className="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse"></span>
                 {t('bookmarklet.intro')}
               </div>
             </div>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { useI18n } from '../i18n';
+import StepIndicator from './StepIndicator';
 
 export default function QueryConfig({ jiraConfig, selectedProject, onStart, onBack }) {
   const { t } = useI18n();
@@ -14,9 +15,9 @@ export default function QueryConfig({ jiraConfig, selectedProject, onStart, onBa
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="w-full max-w-md mx-auto bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-slate-800 rounded-2xl p-0.5 shadow-xl border border-slate-200 dark:border-slate-700"
+      className="w-full max-w-md mx-auto bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-2xl p-0.5 shadow-xl"
     >
-      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 space-y-5">
+      <div className="bg-[var(--bg-primary)] rounded-2xl p-6 space-y-5">
         {/* Back button */}
         {onBack && (
           <button
@@ -30,14 +31,14 @@ export default function QueryConfig({ jiraConfig, selectedProject, onStart, onBa
 
         {/* Step title */}
         <div className="text-center mb-1">
+          <StepIndicator currentStep="query" />
           <h2 className="text-xl font-bold text-[var(--text-primary)]">
             {t('query.title')}
           </h2>
-          <p className="text-sm text-[var(--text-tertiary)] mt-1">{t('query.step4')}</p>
         </div>
 
         {/* Summary card */}
-        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 space-y-2 shadow-sm">
+        <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-primary)] space-y-2 shadow-sm">
           <div className="flex items-center justify-between text-sm">
             <span className="text-[var(--text-secondary)]">{t('filter.sprint')}</span>
             <span className="text-[var(--text-primary)] font-semibold">
@@ -75,7 +76,7 @@ export default function QueryConfig({ jiraConfig, selectedProject, onStart, onBa
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="email@company.com"
-            className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all"
+            className="w-full px-3.5 py-2.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl font-mono text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] transition-all"
           />
         </div>
 
@@ -93,7 +94,7 @@ export default function QueryConfig({ jiraConfig, selectedProject, onStart, onBa
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onStart({ email: email.trim(), jql: jql.trim() }); } }}
             placeholder='project = "BXDBE" ORDER BY created DESC'
             rows={3}
-            className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 resize-none font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-all"
+            className="w-full px-3.5 py-2.5 text-sm bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] resize-none font-mono text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-all"
           />
           <p className="text-[10px] text-[var(--text-tertiary)] mt-1">
             {t('query.emptyJql')}
@@ -104,7 +105,7 @@ export default function QueryConfig({ jiraConfig, selectedProject, onStart, onBa
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-400 rounded-xl font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 border border-[var(--border-primary)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-xl font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
             {t('query.back')}
@@ -113,7 +114,7 @@ export default function QueryConfig({ jiraConfig, selectedProject, onStart, onBa
             onClick={() =>
               onStart({ email: email.trim(), jql: jql.trim() })
             }
-            className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white rounded-xl font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+            className="flex-1 py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-[var(--accent)]/20"
           >
             <ArrowRight className="w-4 h-4" />
             {t('query.start')}

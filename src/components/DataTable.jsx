@@ -1,10 +1,8 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useApp } from '../context/AppContext';
-import { useMemo, useCallback, useState, useRef } from 'react';
-import { Search, ArrowUpDown, ArrowUp, ArrowDown, CheckSquare, Square, Download, AlertCircle, Tag } from 'lucide-react';
+import { useMemo, useCallback, useState } from 'react';
+import { Search, ArrowUpDown, ArrowUp, ArrowDown, CheckSquare, Square, Download, AlertCircle } from 'lucide-react';
 import TaskDetail from './TaskDetail';
-import LabelBadge from './LabelBadge';
-import LabelDropdown from './LabelDropdown';
 import { exportCSV } from '../utils/exportUtils';
 import { useI18n } from '../i18n';
 
@@ -14,10 +12,6 @@ export default function DataTable() {
   const { t } = useI18n();
   const { state, dispatch } = useApp();
   const [selectedTask, setSelectedTask] = useState(null);
-  const [labelDropdownTask, setLabelDropdownTask] = useState(null);
-  const [bulkLabelOpen, setBulkLabelOpen] = useState(false);
-  const labelDropdownRef = useRef(null);
-  const bulkButtonRef = useRef(null);
 
   const { tableSortCol, tableSortDir, tablePage, tableSearchTerm, selectedTasks } = state;
 
@@ -40,9 +34,6 @@ export default function DataTable() {
         if (t.resolved && t.resolved > d) return false;
         if (!t.resolved && t.created && t.created > d) return false;
       }
-      if (f.labels && f.labels.length > 0) {
-        if (!t.labels || !f.labels.some(l => t.labels.includes(l))) return false;
-      }
       return true;
     });
 
@@ -52,11 +43,7 @@ export default function DataTable() {
         t.key.toLowerCase().includes(q) ||
         t.summary.toLowerCase().includes(q) ||
         t.comps.some(c => c.toLowerCase().includes(q)) ||
-        t.assignee.toLowerCase().includes(q) ||
-        (t.labels || []).some(lid => {
-          const def = state.labelDefs?.[lid];
-          return def?.name?.toLowerCase().includes(q) || lid.toLowerCase().includes(q);
-        })
+        t.assignee.toLowerCase().includes(q)
       );
     }
 
@@ -106,7 +93,6 @@ export default function DataTable() {
     { key: 'timeSpentHr', label: t('table.hoursLogged') },
     { key: 'originalEstimateHr', label: t('table.hoursEstimate') },
     { key: 'status', label: t('table.status') },
-    { key: 'labels', label: t('table.labels') },
   ];
 
   const handleSelectAll = useCallback(() => {
@@ -185,25 +171,17 @@ export default function DataTable() {
           initial={{ opacity: 0, y: -8, height: 0 }}
           animate={{ opacity: 1, y: 0, height: 'auto' }}
           exit={{ opacity: 0, y: -8, height: 0 }}
-          className="flex items-center gap-2 mb-3 p-2.5 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg"
+          className="flex items-center gap-2 mb-3 p-2.5 bg-[var(--accent-light)] border border-[var(--accent)]/30 rounded-lg"
         >
-          <span className="text-xs font-medium text-indigo-700 dark:text-indigo-300 whitespace-nowrap">
+          <span className="text-xs font-medium text-[var(--accent)] whitespace-nowrap">
             {t('table.selectedCount')} {selectedTasks.length} {t('common.tasks')}
           </span>
           <div className="flex-1" />
           <button
             onClick={handleBulkClose}
-            className="px-3 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors cursor-pointer"
+            className="px-3 py-1.5 text-xs font-medium bg-[var(--accent)] hover:opacity-90 text-white rounded-md transition-colors cursor-pointer"
           >
             {t('table.markDone')}
-          </button>
-          <button
-            ref={bulkButtonRef}
-            onClick={() => setBulkLabelOpen(true)}
-            className="px-3 py-1.5 text-xs font-medium bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border-primary)] rounded-md transition-colors flex items-center gap-1 cursor-pointer"
-          >
-            <Tag className="w-3 h-3" />
-            {t('table.bulkLabel')}
           </button>
           <button
             onClick={handleBulkExport}
@@ -223,7 +201,7 @@ export default function DataTable() {
 
       {/* Warning note */}
       {selectedTasks.length > 0 && (
-        <div className="flex items-center gap-1.5 mb-2 text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/10 px-2.5 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800/50">
+        <div className="flex items-center gap-1.5 mb-2 text-[11px] text-[var(--warning)] bg-[var(--warning)]/10 px-2.5 py-1.5 rounded-lg border border-[var(--warning)]/30">
           <AlertCircle className="w-3 h-3 flex-shrink-0" />
           <span>{t('table.appOnly')}</span>
         </div>
@@ -264,8 +242,8 @@ export default function DataTable() {
             {page.map((t) => (
               <tr
                 key={t.key}
-                className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-[var(--border-primary)] last:border-b-0 cursor-pointer ${
-                  selectedTasks.includes(t.key) ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''
+                className={`hover:bg-[var(--bg-secondary)] transition-colors border-b border-[var(--border-primary)] last:border-b-0 cursor-pointer ${
+                  selectedTasks.includes(t.key) ? 'bg-[var(--accent-light)]/50' : ''
                 }`}
                 onClick={() => handleRowClick(t)}
               >
@@ -309,34 +287,6 @@ export default function DataTable() {
                 <td className="px-2.5 py-2 text-[13px] text-[var(--text-secondary)]">
                   {t.status || '—'}
                 </td>
-                <td className="px-2.5 py-2 relative">
-                  <div
-                    ref={(el) => { if (labelDropdownTask === t.key) labelDropdownRef.current = el; }}
-                    className="flex flex-wrap gap-1 cursor-pointer min-h-[20px] items-center"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setLabelDropdownTask(labelDropdownTask === t.key ? null : t.key);
-                    }}
-                  >
-                    {(t.labels || []).length > 0 ? (
-                      (t.labels || []).map(lid => (
-                        <LabelBadge key={lid} labelId={lid} labelDefs={state.labelDefs} />
-                      ))
-                    ) : (
-                      <span className="text-[11px] text-[var(--text-tertiary)]">—</span>
-                    )}
-                    {/* Label dropdown for single task */}
-                    <AnimatePresence>
-                      {labelDropdownTask === t.key && (
-                        <LabelDropdown
-                          taskKeys={t.key}
-                          onClose={() => setLabelDropdownTask(null)}
-                          anchorRef={labelDropdownRef}
-                        />
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </td>
               </tr>
             ))}
           </tbody>
@@ -361,38 +311,6 @@ export default function DataTable() {
           ))}
         </div>
       )}
-
-      {/* Bulk label dropdown */}
-      <AnimatePresence>
-        {bulkLabelOpen && selectedTasks.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.15 }}
-            className="relative mt-2"
-          >
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-[var(--text-secondary)]">
-                {t('table.bulkLabelFor')} {selectedTasks.length} {t('common.tasks')}
-              </span>
-              <button
-                onClick={() => setBulkLabelOpen(false)}
-                className="text-xs text-[var(--text-tertiary)] hover:text-[var(--danger)] transition-colors cursor-pointer"
-              >
-                {t('table.close')}
-              </button>
-            </div>
-            <div className="relative">
-              <LabelDropdown
-                taskKeys={selectedTasks}
-                onClose={() => setBulkLabelOpen(false)}
-                anchorRef={bulkButtonRef}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Task Detail Modal */}
       {selectedTask && <TaskDetail task={selectedTask} onClose={handleCloseDetail} />}

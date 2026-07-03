@@ -27,7 +27,7 @@ export default function MonthComparison({ tasks }) {
     const monthMap = {};
 
     tasks.forEach(t => {
-      const d = t.resolved || t.created;
+      const d = t.startDate;
       if (!d) return;
       const key = formatMonthKey(d.getFullYear(), d.getMonth() + 1);
       if (!monthMap[key]) {

@@ -18,7 +18,6 @@ import BurndownChart from './charts/BurndownChart';
 import GanttChart from './GanttChart';
 import DataTable from './DataTable';
 import OTPanelInline from './OTPanelInline';
-import LabelsPanelInline from './LabelsPanelInline';
 import HistoryPanelInline from './HistoryPanelInline';
 import MonthComparison from './MonthComparison';
 import AutoReport from './AutoReport';
@@ -109,20 +108,20 @@ function OverviewPanel({ tasks }) {
     >
       {/* ── Overdue tasks warning ── */}
       {overdueTasks.length > 0 && (
-        <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center gap-3">
+        <div className="mb-4 bg-[var(--danger)]/10 border border-[var(--danger)]/30 rounded-lg p-3 flex items-center gap-3">
           <span className="text-lg">⚠️</span>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-red-700 dark:text-red-300">
+            <p className="text-sm font-semibold text-[var(--danger)]">
               {overdueTasks.length} {t('common.overdue')}
             </p>
-            <p className="text-xs text-red-600 dark:text-red-400">
+            <p className="text-xs text-[var(--danger)]">
               {overdueTasks.slice(0, 3).map(t => t.key).join(', ')}
               {overdueTasks.length > 3 ? ' ' + t('dashboard.overdueMore') + ' ' + (overdueTasks.length - 3) + ' ' + t('dashboard.otherTask') : ''}
             </p>
           </div>
           <button
             onClick={() => dispatch({ type: 'SET_DASHBOARD_TAB', payload: 'data' })}
-            className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+            className="text-xs bg-[var(--danger)] hover:opacity-90 text-white px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
           >
             {t('common.viewTable')}
           </button>
@@ -264,6 +263,8 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState('');
   const intervalRef = useRef(null);
+  const jiraConfigRef = useRef(state.jiraConfig);
+  useEffect(() => { jiraConfigRef.current = state.jiraConfig; }, [state.jiraConfig]);
   const navigate = useNavigate();
   const { tab } = useParams();
 
@@ -307,10 +308,6 @@ export default function Dashboard() {
       if (t.resolved && t.resolved > d) return false;
       if (!t.resolved && t.created && t.created > d) return false;
     }
-    if (filters.labels && filters.labels.length > 0) {
-      const taskLabels = t.labels || [];
-      if (!filters.labels.some(lid => taskLabels.includes(lid))) return false;
-    }
     return true;
   });
 
@@ -327,7 +324,7 @@ export default function Dashboard() {
         intervalRef.current = setInterval(async () => {
           try {
             setRefreshError('');
-            const { url, token, projectKey, assignee, jql } = state.jiraConfig;
+            const { url, token, projectKey, assignee, jql } = jiraConfigRef.current;
             if (!url || !token || !projectKey) return;
             const freshTasks = await fetchJiraIssues(url, token, projectKey.toUpperCase(), assignee || '', jql || '');
             if (freshTasks.length === 0) return;
@@ -346,7 +343,7 @@ export default function Dashboard() {
         intervalRef.current = null;
       }
     };
-  }, [state.dataSource, state.jiraConnected, state.jiraAutoRefresh, state.jiraConfig, dispatch]);
+  }, [state.dataSource, state.jiraConnected, state.jiraAutoRefresh, dispatch]);
 
   // Manual refresh
   const handleManualRefresh = useCallback(async () => {
@@ -460,8 +457,8 @@ export default function Dashboard() {
             </div>
 
             {state.jqlUsed && (
-              <div className="flex items-center gap-1.5 text-[11px] bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg px-2.5 py-1.5 max-w-lg">
-                🔍 <span className="truncate">JQL: <code className="text-xs bg-blue-100 dark:bg-blue-900/40 px-1 rounded">{state.jqlUsed.length > 60 ? state.jqlUsed.substring(0, 60) + '...' : state.jqlUsed}</code></span>
+              <div className="flex items-center gap-1.5 text-[11px] bg-[var(--accent-light)] border border-[var(--accent)]/30 rounded-lg px-2.5 py-1.5 max-w-lg">
+                🔍 <span className="truncate">JQL: <code className="text-xs bg-[var(--accent)]/10 px-1 rounded">{state.jqlUsed.length > 60 ? state.jqlUsed.substring(0, 60) + '...' : state.jqlUsed}</code></span>
               </div>
             )}
 
@@ -486,16 +483,16 @@ export default function Dashboard() {
 
         {/* ── OT/Leave notification ── */}
         {(state.otLeaveData?.otTotal > 0 || state.otLeaveData?.leaveTotal > 0) && (
-          <div className="mb-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-2.5 flex items-center gap-3 text-xs">
+          <div className="mb-4 bg-[var(--accent-light)] border border-[var(--accent)]/30 rounded-lg p-2.5 flex items-center gap-3 text-xs">
             <span className="text-base">📝</span>
             <div className="flex items-center gap-4 flex-wrap">
               {state.otLeaveData.otTotal > 0 && (
-                <span className="text-indigo-700 dark:text-indigo-300 font-medium">
+                <span className="text-[var(--accent)] font-medium">
                   ⏱ {t('dashboard.otPrefix')}{state.otLeaveData.otTotal}h
                 </span>
               )}
               {state.otLeaveData.leaveTotal > 0 && (
-                <span className="text-indigo-700 dark:text-indigo-300 font-medium">
+                <span className="text-[var(--accent)] font-medium">
                   🏖 {t('dashboard.leavePrefix')}{state.otLeaveData.leaveTotal}h
                 </span>
               )}
@@ -514,7 +511,6 @@ export default function Dashboard() {
           {activeTab === 'gantt' && <GanttPanel tasks={filteredTasks} />}
           {activeTab === 'compare' && <ComparePanel tasks={filteredTasks} />}
           {activeTab === 'ot' && <OTPanelInline />}
-          {activeTab === 'labels' && <LabelsPanelInline />}
           {activeTab === 'history' && <HistoryPanelInline />}
         </AnimatePresence>
 

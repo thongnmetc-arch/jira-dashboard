@@ -21,7 +21,7 @@ export default function SprintBarChart({ tasks }) {
       const s = task.primarySprint;
       if (!groups[s]) groups[s] = { spent: 0, est: 0 };
       groups[s].spent += task.timeSpentHr;
-      groups[s].est += task.estimateHr;
+      groups[s].est += task.originalEstimateHr || task.estimateHr || 0;
     });
 
     const sorted = Object.entries(groups).sort((a, b) => {

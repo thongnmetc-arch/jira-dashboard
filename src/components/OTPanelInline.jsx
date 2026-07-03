@@ -31,129 +31,91 @@ export default function OTPanelInline() {
       transition={{ duration: 0.2, ease: 'easeOut' }}
     >
       {/* Header */}
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-5">
         <Clock className="w-4 h-4 text-[var(--accent)]" />
-        <h2 className="text-sm font-semibold text-[var(--text-primary)]">
-          {t('ot.title')}
-        </h2>
+        <h2 className="text-sm font-semibold text-[var(--text-primary)]">⏱ OT &amp; Nghỉ phép</h2>
       </div>
 
-      <div className="space-y-4">
-        {/* OT Hours */}
-        <div>
-          <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
-            {t('ot.otLabel')}
-          </label>
+      <div className="space-y-5">
+        {/* Two-column cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* OT Card */}
+          <div className="p-4 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)]">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-[var(--success)]/10 flex items-center justify-center">
+                <span className="text-sm">⏱</span>
+              </div>
+              <span className="text-xs font-semibold text-[var(--text-primary)] uppercase tracking-wider">Tăng ca (OT)</span>
+            </div>
 
-          {/* Quick add buttons */}
-          <div className="flex gap-1.5 flex-wrap mb-3">
-            <button onClick={() => setOtTotal((prev) => (parseFloat(prev) || 0) + 0.5)}
-              className="text-xs px-2.5 py-1.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors">
-              +0.5h
-            </button>
-            <button onClick={() => setOtTotal((prev) => (parseFloat(prev) || 0) + 1.5)}
-              className="text-xs px-2.5 py-1.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors">
-              +1.5h
-            </button>
-            <button onClick={() => setOtTotal((prev) => (parseFloat(prev) || 0) + 2)}
-              className="text-xs px-2.5 py-1.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors">
-              +2h
-            </button>
-            <button onClick={() => setOtTotal((prev) => (parseFloat(prev) || 0) + 4)}
-              className="text-xs px-2.5 py-1.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors">
-              +4h
-            </button>
-            <button onClick={() => setOtTotal((prev) => (parseFloat(prev) || 0) + 8)}
-              className="text-xs px-2.5 py-1.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors">
-              +8h
-            </button>
+            {/* Large number */}
+            <div className="text-3xl font-bold text-[var(--success)] mb-1 font-mono tabular-nums">
+              {(parseFloat(otTotal) || 0).toFixed(1)}<span className="text-lg font-normal text-[var(--text-tertiary)] ml-1">h</span>
+            </div>
+
+            {/* Quick add */}
+            <div className="flex gap-1.5 flex-wrap mb-3">
+              {[0.5, 1.5, 2, 4, 8].map(h => (
+                <button key={h} onClick={() => setOtTotal(prev => (parseFloat(prev) || 0) + h)}
+                  className="text-[10px] px-2 py-1 rounded-md bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-secondary)] hover:bg-[var(--success)]/10 hover:text-[var(--success)] hover:border-[var(--success)]/30 transition-all font-mono">
+                  +{h}h
+                </button>
+              ))}
+            </div>
+
+            {/* Input */}
+            <div className="flex items-center gap-2">
+              <input type="number" min="0" max="200" step="0.5" value={otTotal}
+                onChange={e => setOtTotal(e.target.value === '' ? '' : parseFloat(e.target.value) || 0)}
+                className="w-20 px-2 py-1.5 text-sm font-mono bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/30 text-center text-[var(--text-primary)]"
+                placeholder="0" />
+              <button onClick={() => setOtTotal('')}
+                className="text-[10px] text-[var(--text-tertiary)] hover:text-[var(--danger)] transition-colors">Xóa</button>
+            </div>
           </div>
 
-          {/* Manual input */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-[var(--text-tertiary)]">{t('ot.totalLabel')}</span>
-            <input
-              type="number"
-              min="0"
-              max="200"
-              step="0.5"
-              value={otTotal}
-              onChange={(e) => {
-                const val = e.target.value === '' ? '' : parseFloat(e.target.value) || 0;
-                setOtTotal(val);
-              }}
-              className="w-24 px-3 py-2 text-sm font-semibold bg-[var(--bg-secondary)] border-2 border-[var(--border-primary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 text-center"
-              placeholder="0"
-            />
-            <span className="text-sm text-[var(--text-secondary)]">{t('ot.hoursUnit')}</span>
-            <button onClick={() => setOtTotal('')}
-              className="text-xs text-[var(--text-tertiary)] hover:text-red-500 transition-colors ml-1">
-              {t('ot.clear')}
-            </button>
+          {/* Leave Card — same pattern, different color */}
+          <div className="p-4 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)]">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-[var(--danger)]/10 flex items-center justify-center">
+                <span className="text-sm">🏖</span>
+              </div>
+              <span className="text-xs font-semibold text-[var(--text-primary)] uppercase tracking-wider">Nghỉ phép</span>
+            </div>
+            <div className="text-3xl font-bold text-[var(--danger)] mb-1 font-mono tabular-nums">
+              {(parseFloat(leaveTotal) || 0).toFixed(1)}<span className="text-lg font-normal text-[var(--text-tertiary)] ml-1">h</span>
+            </div>
+            <div className="flex gap-1.5 flex-wrap mb-3">
+              {[1.75, 3.5, 7, 14].map(h => (
+                <button key={h} onClick={() => setLeaveTotal(prev => (parseFloat(prev) || 0) + h)}
+                  className="text-[10px] px-2 py-1 rounded-md bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-secondary)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)] hover:border-[var(--danger)]/30 transition-all font-mono">
+                  +{h}h
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <input type="number" min="0" max="200" step="0.5" value={leaveTotal}
+                onChange={e => setLeaveTotal(e.target.value === '' ? '' : parseFloat(e.target.value) || 0)}
+                className="w-20 px-2 py-1.5 text-sm font-mono bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/30 text-center text-[var(--text-primary)]"
+                placeholder="0" />
+              <button onClick={() => setLeaveTotal('')}
+                className="text-[10px] text-[var(--text-tertiary)] hover:text-[var(--danger)] transition-colors">Xóa</button>
+            </div>
           </div>
         </div>
 
-        {/* Leave Hours */}
-        <div>
-          <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
-            {t('ot.leaveLabel')}
-          </label>
-
-          {/* Quick add buttons — each click adds to total */}
-          <div className="flex gap-1.5 flex-wrap mb-3">
-            <button onClick={() => setLeaveTotal((prev) => (parseFloat(prev) || 0) + 1.75)}
-              className="text-xs px-2.5 py-1.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
-              {t('ot.quickAddQuarter')}
-            </button>
-            <button onClick={() => setLeaveTotal((prev) => (parseFloat(prev) || 0) + 3.5)}
-              className="text-xs px-2.5 py-1.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
-              {t('ot.quickAddHalf')}
-            </button>
-            <button onClick={() => setLeaveTotal((prev) => (parseFloat(prev) || 0) + 7)}
-              className="text-xs px-2.5 py-1.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
-              {t('ot.quickAddOneDay')}
-            </button>
-            <button onClick={() => setLeaveTotal((prev) => (parseFloat(prev) || 0) + 14)}
-              className="text-xs px-2.5 py-1.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
-              {t('ot.quickAddTwoDay')}
-            </button>
-          </div>
-
-          {/* Display current total + manual input for fine-tuning */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-[var(--text-tertiary)]">{t('ot.totalLabel')}</span>
-            <input
-              type="number"
-              min="0"
-              max="200"
-              step="0.5"
-              value={leaveTotal}
-              onChange={(e) => {
-                const val = e.target.value === '' ? '' : parseFloat(e.target.value) || 0;
-                setLeaveTotal(val);
-              }}
-              className="w-24 px-3 py-2 text-sm font-semibold bg-[var(--bg-secondary)] border-2 border-[var(--border-primary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 text-center"
-              placeholder="0"
-            />
-            <span className="text-sm text-[var(--text-secondary)]">{t('ot.hoursUnit')}</span>
-            <button onClick={() => setLeaveTotal('')}
-              className="text-xs text-[var(--text-tertiary)] hover:text-red-500 transition-colors ml-1">
-              {t('ot.clear')}
-            </button>
-          </div>
+        {/* Info hint */}
+        <div className="p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)]/50">
+          <p className="text-xs text-[var(--text-tertiary)]">
+            {t('ot.effortFormula')}
+          </p>
         </div>
 
         {/* Save button */}
-        <button
-          onClick={handleSave}
-          className="w-full bg-[var(--accent)] hover:opacity-90 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-opacity cursor-pointer"
-        >
+        <button onClick={handleSave}
+          className="w-full bg-[var(--accent)] hover:opacity-90 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-opacity cursor-pointer">
           💾 {t('ot.save')}
         </button>
-
-        <p className="text-xs text-[var(--text-tertiary)]">
-          {t('ot.effortFormula')}
-        </p>
       </div>
     </motion.div>
   );

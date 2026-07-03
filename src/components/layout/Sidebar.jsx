@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  Tag,
   History,
   Bookmark,
   Calendar,
@@ -134,7 +133,6 @@ export default function Sidebar() {
               <SubItem icon={CalendarRange} label={t('tabs.gantt')} isActive={dashboardTab === 'gantt'} onClick={() => { navigate('/dashboard/gantt'); dispatch({ type: 'SET_DASHBOARD_TAB', payload: 'gantt' }); }} />
               <SubItem icon={BarChart3} label={t('tabs.compare')} isActive={dashboardTab === 'compare'} onClick={() => { navigate('/dashboard/compare'); dispatch({ type: 'SET_DASHBOARD_TAB', payload: 'compare' }); }} />
               <SubItem icon={Clock} label={t('tabs.ot')} isActive={dashboardTab === 'ot'} onClick={() => { navigate('/dashboard/ot'); dispatch({ type: 'SET_DASHBOARD_TAB', payload: 'ot' }); }} />
-              <SubItem icon={Tag} label={t('tabs.labels')} isActive={dashboardTab === 'labels'} onClick={() => { navigate('/dashboard/labels'); dispatch({ type: 'SET_DASHBOARD_TAB', payload: 'labels' }); }} />
               <SubItem icon={History} label={t('tabs.history')} isActive={dashboardTab === 'history'} onClick={() => { navigate('/dashboard/history'); dispatch({ type: 'SET_DASHBOARD_TAB', payload: 'history' }); }} />
             </motion.div>
           )}

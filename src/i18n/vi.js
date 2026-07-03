@@ -20,13 +20,11 @@ const vi = {
   // Weekly Planner
   planner: { title: 'Kế hoạch tuần', addTask: 'Thêm công việc', save: 'Lưu', logToJira: 'Log lên JIRA', logging: 'Đang log...', logged: 'Đã log!', error: 'Lỗi khi log', noTasks: 'Chưa có công việc nào', hours: 'giờ', target: 'Mục tiêu' },
   // OT Panel
-  ot: { title: 'OT & Nghỉ phép', otHours: 'Giờ OT', leaveHours: 'Giờ nghỉ phép', save: 'Lưu & Tính lại Effort', quickAdd: 'Thêm nhanh', otLabel: '⏱ Tăng ca (OT)', leaveLabel: '🏖 Nghỉ phép', totalLabel: 'Tổng:', quickAddQuarter: '+¼ ngày (1.75h)', quickAddHalf: '+½ ngày (3.5h)', quickAddOneDay: '+1 ngày (7h)', quickAddTwoDay: '+2 ngày (14h)', effortFormula: 'Effort sẽ tự động tính lại: (Ngày công × 7 + OT - Nghỉ) / Tổng giờ log', clear: 'Xóa', hoursUnit: 'giờ' },
+  ot: { title: 'OT & Nghỉ phép', otHours: 'Giờ OT', leaveHours: 'Giờ nghỉ phép', save: 'Lưu & Tính lại Effort', quickAdd: 'Thêm nhanh', otLabel: '⏱ Tăng ca (OT)', leaveLabel: '🏖 Nghỉ phép', totalLabel: 'Tổng:', quickAddQuarter: '+¼ ngày (1.75h)', quickAddHalf: '+½ ngày (3.5h)', quickAddOneDay: '+1 ngày (7h)', quickAddTwoDay: '+2 ngày (14h)', effortFormula: 'Effort sẽ tự động tính lại: (Ngày công × 7 + OT - Nghỉ) / Tổng giờ ước tính', clear: 'Xóa', hoursUnit: 'giờ' },
   // Bookmarklet
   bookmarklet: { title: 'Bookmarklet', noToken: 'Không cần API Token', oneTime: 'Làm 1 lần', intro: 'Tạo 1 bookmark trên thanh trình duyệt', step1: 'Bước 1: Copy đoạn code này', step2: 'Bước 2: Tạo bookmark', step3: 'Bước 3: Dùng hàng ngày', copy: 'Copy', copied: 'Đã copy!', jqlOptional: 'JQL (tùy chọn)', jqlDefault: 'Để trống để dùng JQL mặc định.' },
   // History
   history: { title: 'Lịch sử', save: 'Lưu bản hiện tại', name: 'Tên bản lưu', compare: 'So sánh', delete: 'Xóa', restore: 'Khôi phục', storage: 'Dung lượng', noSnapshots: 'Chưa có bản lưu nào' },
-  // Labels
-  labels: { title: 'Quản lý nhãn', create: 'Tạo nhãn', name: 'Tên nhãn', color: 'Màu sắc', save: 'Lưu', delete: 'Xóa', autoRule: 'Auto-rule', noLabels: 'Chưa có nhãn nào' },
   // Dashboard tabs
   tabs: { overview: 'Tổng quan', charts: 'Biểu đồ', data: 'Dữ liệu', gantt: 'Gantt', compare: 'So sánh', ot: 'OT & Nghỉ phép', labels: 'Nhãn', history: 'Lịch sử' },
   // Common

@@ -1,11 +1,13 @@
 import { Sun, Moon, Menu, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useI18n } from '../../i18n';
 
 export default function TopBar({ onToggleMobile }) {
   const { state, dispatch } = useApp();
   const { t, lang, toggleLanguage } = useI18n();
+  const navigate = useNavigate();
 
   const sectionNames = {
     dashboard: t('sidebar.overview'),
@@ -123,9 +125,9 @@ export default function TopBar({ onToggleMobile }) {
         <button
           onClick={() => {
             localStorage.removeItem('jira-dash-auth');
-            window.location.reload();
+            navigate('/login');
           }}
-          className="p-1.5 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer"
+          className="p-1.5 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--danger)] transition-colors cursor-pointer"
           title={t('common.logout')}
           aria-label={t('common.logout')}
         >

@@ -77,23 +77,23 @@ export default function OTPanel() {
                 {/* Quick add buttons */}
                 <div className="flex gap-1.5 flex-wrap mb-3">
                   <button onClick={() => setOtTotal((prev) => (parseFloat(prev) || 0) + 0.5)}
-                    className="text-xs px-2.5 py-1.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors">
+                    className="text-xs px-2.5 py-1.5 rounded-full bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/30 hover:bg-[var(--success)]/20 transition-colors">
                     +0.5h
                   </button>
                   <button onClick={() => setOtTotal((prev) => (parseFloat(prev) || 0) + 1.5)}
-                    className="text-xs px-2.5 py-1.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors">
+                    className="text-xs px-2.5 py-1.5 rounded-full bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/30 hover:bg-[var(--success)]/20 transition-colors">
                     +1.5h
                   </button>
                   <button onClick={() => setOtTotal((prev) => (parseFloat(prev) || 0) + 2)}
-                    className="text-xs px-2.5 py-1.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors">
+                    className="text-xs px-2.5 py-1.5 rounded-full bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/30 hover:bg-[var(--success)]/20 transition-colors">
                     +2h
                   </button>
                   <button onClick={() => setOtTotal((prev) => (parseFloat(prev) || 0) + 4)}
-                    className="text-xs px-2.5 py-1.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors">
+                    className="text-xs px-2.5 py-1.5 rounded-full bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/30 hover:bg-[var(--success)]/20 transition-colors">
                     +4h
                   </button>
                   <button onClick={() => setOtTotal((prev) => (parseFloat(prev) || 0) + 8)}
-                    className="text-xs px-2.5 py-1.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors">
+                    className="text-xs px-2.5 py-1.5 rounded-full bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/30 hover:bg-[var(--success)]/20 transition-colors">
                     +8h
                   </button>
                 </div>
@@ -116,7 +116,7 @@ export default function OTPanel() {
                   />
                   <span className="text-sm text-[var(--text-secondary)]">{t('ot.hoursUnit')}</span>
                   <button onClick={() => setOtTotal('')}
-                    className="text-xs text-[var(--text-tertiary)] hover:text-red-500 transition-colors ml-1">
+                    className="text-xs text-[var(--text-tertiary)] hover:text-[var(--danger)] transition-colors ml-1">
                     {t('ot.clear')}
                   </button>
                 </div>
@@ -131,19 +131,19 @@ export default function OTPanel() {
                 {/* Quick add buttons — each click adds to total */}
                 <div className="flex gap-1.5 flex-wrap mb-3">
                   <button onClick={() => setLeaveTotal((prev) => (parseFloat(prev) || 0) + 1.75)}
-                    className="text-xs px-2.5 py-1.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
+                    className="text-xs px-2.5 py-1.5 rounded-full bg-[var(--danger)]/10 text-[var(--danger)] border border-[var(--danger)]/30 hover:bg-[var(--danger)]/20 transition-colors">
                     {t('ot.quickAddQuarter')}
                   </button>
                   <button onClick={() => setLeaveTotal((prev) => (parseFloat(prev) || 0) + 3.5)}
-                    className="text-xs px-2.5 py-1.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
+                    className="text-xs px-2.5 py-1.5 rounded-full bg-[var(--danger)]/10 text-[var(--danger)] border border-[var(--danger)]/30 hover:bg-[var(--danger)]/20 transition-colors">
                     {t('ot.quickAddHalf')}
                   </button>
                   <button onClick={() => setLeaveTotal((prev) => (parseFloat(prev) || 0) + 7)}
-                    className="text-xs px-2.5 py-1.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
+                    className="text-xs px-2.5 py-1.5 rounded-full bg-[var(--danger)]/10 text-[var(--danger)] border border-[var(--danger)]/30 hover:bg-[var(--danger)]/20 transition-colors">
                     {t('ot.quickAddOneDay')}
                   </button>
                   <button onClick={() => setLeaveTotal((prev) => (parseFloat(prev) || 0) + 14)}
-                    className="text-xs px-2.5 py-1.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
+                    className="text-xs px-2.5 py-1.5 rounded-full bg-[var(--danger)]/10 text-[var(--danger)] border border-[var(--danger)]/30 hover:bg-[var(--danger)]/20 transition-colors">
                     {t('ot.quickAddTwoDay')}
                   </button>
                 </div>
@@ -166,7 +166,7 @@ export default function OTPanel() {
                   />
                   <span className="text-sm text-[var(--text-secondary)]">{t('ot.hoursUnit')}</span>
                   <button onClick={() => setLeaveTotal('')}
-                    className="text-xs text-[var(--text-tertiary)] hover:text-red-500 transition-colors ml-1">
+                    className="text-xs text-[var(--text-tertiary)] hover:text-[var(--danger)] transition-colors ml-1">
                     {t('ot.clear')}
                   </button>
                 </div>

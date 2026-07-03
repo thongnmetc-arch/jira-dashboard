@@ -283,24 +283,24 @@ export default function LoginScreen({ onUnlock }) {
      ────────────────────────────────────────────── */
   if (mode === 'lockout' || (mode !== 'loading' && isLockedOut())) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:bg-gradient-to-br dark:from-indigo-950 dark:via-slate-900 dark:to-slate-950">
+      <div className="min-h-screen w-full flex items-center justify-center bg-[var(--bg-secondary)]">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
           className="w-full max-w-sm mx-4"
         >
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-8 text-center">
-            <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <AlertTriangle className="w-6 h-6 text-red-500" />
+          <div className="bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-2xl shadow-xl p-8 text-center">
+            <div className="w-12 h-12 bg-[var(--danger)]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-6 h-6 text-[var(--danger)]" />
             </div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+            <h1 className="text-xl font-bold text-[var(--text-primary)] mb-2">
               {t('login.lockoutTitle')}
             </h1>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+            <p className="text-sm text-[var(--text-secondary)] mb-6">
               {t('login.lockoutMsg')}
             </p>
-            <p className="text-2xl font-mono font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">
+            <p className="text-2xl font-mono font-bold text-[var(--accent)] tabular-nums">
               {formatTime(lockoutRemaining)}
             </p>
           </div>
@@ -312,8 +312,8 @@ export default function LoginScreen({ onUnlock }) {
   /* ───── loading state ───── */
   if (mode === 'loading') {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:bg-gradient-to-br dark:from-indigo-950 dark:via-slate-900 dark:to-slate-950">
-        <div className="w-9 h-9 border-4 border-indigo-300/30 dark:border-white/20 border-t-indigo-600 dark:border-t-white rounded-full animate-spin" />
+      <div className="min-h-screen w-full flex items-center justify-center bg-[var(--bg-secondary)]">
+        <div className="w-9 h-9 border-4 border-[var(--accent)]/30 border-t-[var(--accent)] rounded-full animate-spin" />
       </div>
     );
   }
@@ -322,14 +322,14 @@ export default function LoginScreen({ onUnlock }) {
      TWO-COLUMN LAYOUT
      ────────────────────────────────────────────── */
   return (
-    <div className="min-h-screen w-full flex flex-col md:flex-row relative bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
+    <div className="min-h-screen w-full flex flex-col md:flex-row relative bg-[var(--bg-secondary)]">
       {/* ══════════════════════════════════════════
           LEFT PANEL — App Introduction (60%)
           ══════════════════════════════════════════ */}
       <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
         <button
           onClick={toggleLanguage}
-          className="p-2 rounded-full backdrop-blur-sm transition-colors bg-slate-200/60 text-slate-600 hover:bg-slate-300/60 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+          className="p-2 rounded-full backdrop-blur-sm transition-colors bg-[var(--bg-secondary)]/80 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
           aria-label={t('lang.switch')}
           title={lang === 'vi' ? 'English' : 'Tiếng Việt'}
         >
@@ -337,13 +337,13 @@ export default function LoginScreen({ onUnlock }) {
         </button>
         <button
           onClick={() => setDarkMode((prev) => !prev)}
-          className="p-2 rounded-full backdrop-blur-sm transition-colors bg-slate-200/60 text-slate-600 hover:bg-slate-300/60 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+          className="p-2 rounded-full backdrop-blur-sm transition-colors bg-[var(--bg-secondary)]/80 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
           aria-label={t('common.toggleTheme')}
         >
           {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </button>
       </div>
-      <div className="relative w-full md:w-[60%] min-h-[40vh] md:min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 dark:from-slate-900 dark:via-indigo-950 dark:to-purple-950">
+      <div className="relative w-full md:w-[60%] min-h-[40vh] md:min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 dark:from-[var(--bg-primary)] dark:via-indigo-950 dark:to-purple-950">
         {/* — decorative floating blobs — */}
         {BLOBS.map((blob, i) => (
           <motion.div
@@ -387,7 +387,7 @@ export default function LoginScreen({ onUnlock }) {
                 <div className="w-14 h-14 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/30 rotate-3">
                   <BarChart3 className="w-8 h-8 text-white" strokeWidth={2.5} />
                 </div>
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-400 rounded-full border-2 border-white flex items-center justify-center">
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[var(--success)] rounded-full border-2 border-white flex items-center justify-center">
                   <Zap className="w-3 h-3 text-white" />
                 </div>
               </div>
@@ -446,24 +446,24 @@ export default function LoginScreen({ onUnlock }) {
       {/* ══════════════════════════════════════════
           RIGHT PANEL — Login Form (40%)
           ══════════════════════════════════════════ */}
-      <div className="w-full md:w-[40%] md:min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-indigo-50 dark:bg-gradient-to-br dark:from-slate-950 dark:to-indigo-950 p-4 md:p-8">
+      <div className="w-full md:w-[40%] md:min-h-screen flex items-center justify-center bg-[var(--bg-secondary)] p-4 md:p-8">
         <motion.div
           variants={cardVariants}
           initial="hidden"
           animate="visible"
           className="w-full max-w-sm"
         >
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl shadow-indigo-500/10 ring-1 ring-indigo-100 dark:ring-slate-700 p-8 min-w-[360px]">
+          <div className="bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-2xl shadow-2xl shadow-[var(--accent)]/10 p-8 min-w-[360px]">
             {/* ───── LOGIN MODE ───── */}
             {mode === 'login' && (
               <>
                 {/* Header */}
                 <div className="flex items-center justify-center mb-6">
-                  <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
-                    <Lock className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                  <div className="w-12 h-12 bg-[var(--accent-light)] rounded-xl flex items-center justify-center">
+                    <Lock className="w-6 h-6 text-[var(--accent)]" />
                   </div>
                 </div>
-                <h1 className="text-xl font-bold text-center text-slate-900 dark:text-white mb-6 whitespace-nowrap">
+                <h1 className="text-xl font-bold text-center text-[var(--text-primary)] mb-6 whitespace-nowrap">
                   {t('login.title')}
                 </h1>
 
@@ -471,7 +471,7 @@ export default function LoginScreen({ onUnlock }) {
                   {/* Username */}
                   <div>
                     <div className="relative">
-                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-slate-500">
+                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--text-tertiary)]">
                         <User className="w-4 h-4" />
                       </div>
                       <input
@@ -480,7 +480,7 @@ export default function LoginScreen({ onUnlock }) {
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         placeholder={t('login.username')}
-                        className="w-full pr-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all py-2.5"
+                        className="w-full pr-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl font-mono text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] transition-all py-2.5"
                         style={{ paddingLeft: '2.75rem' }}
                         autoComplete="username"
                       />
@@ -490,7 +490,7 @@ export default function LoginScreen({ onUnlock }) {
                   {/* Password */}
                   <div>
                     <div className="relative">
-                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-slate-500">
+                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--text-tertiary)]">
                         <Lock className="w-4 h-4" />
                       </div>
                       <input
@@ -498,7 +498,7 @@ export default function LoginScreen({ onUnlock }) {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder={t('login.password')}
-                        className="w-full pr-10 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all py-2.5"
+                        className="w-full pr-10 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl font-mono text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] transition-all py-2.5"
                         style={{ paddingLeft: '2.75rem' }}
                         autoComplete="current-password"
                         minLength={4}
@@ -506,7 +506,7 @@ export default function LoginScreen({ onUnlock }) {
                       <button
                         type="button"
                         onClick={() => setShowPassword((v) => !v)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
                         tabIndex={-1}
                         aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
                       >
@@ -525,9 +525,9 @@ export default function LoginScreen({ onUnlock }) {
                       type="checkbox"
                       checked={remember}
                       onChange={(e) => setRemember(e.target.checked)}
-                      className="w-4 h-4 accent-indigo-600 text-slate-900 dark:text-white"
+                      className="w-4 h-4 accent-[var(--accent)]"
                     />
-                    <span className="text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                    <span className="text-sm text-[var(--text-secondary)] whitespace-nowrap">
                       {t('login.remember')}
                     </span>
                   </label>
@@ -539,10 +539,10 @@ export default function LoginScreen({ onUnlock }) {
                       variants={shakeVariants}
                       initial="shake"
                       animate="shake"
-                      className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+                      className="flex items-center gap-2 p-3 bg-[var(--danger)]/10 border border-[var(--danger)]/30 rounded-lg"
                     >
-                      <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
-                      <span className="text-sm text-red-600 dark:text-red-400">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-[var(--danger)]" />
+                      <span className="text-sm text-[var(--danger)]">
                         {error}
                       </span>
                     </motion.div>
@@ -568,7 +568,7 @@ export default function LoginScreen({ onUnlock }) {
                       setPassword('');
                       setConfirmPassword('');
                     }}
-                    className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors whitespace-nowrap"
+                    className="text-xs text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors whitespace-nowrap"
                   >
                     {t('login.setupLink')}
                   </button>
@@ -580,10 +580,10 @@ export default function LoginScreen({ onUnlock }) {
             {mode === 'setup' && (
               <>
                 {/* Header */}
-                <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <Lock className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                <div className="w-12 h-12 bg-[var(--accent-light)] rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <Lock className="w-6 h-6 text-[var(--accent)]" />
                 </div>
-                <h1 className="text-xl font-bold text-center text-slate-900 dark:text-white mb-6 whitespace-nowrap">
+                <h1 className="text-xl font-bold text-center text-[var(--text-primary)] mb-6 whitespace-nowrap">
                   {t('login.setup')}
                 </h1>
 
@@ -591,7 +591,7 @@ export default function LoginScreen({ onUnlock }) {
                   {/* Username */}
                   <div>
                     <div className="relative">
-                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-slate-500">
+                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--text-tertiary)]">
                         <User className="w-4 h-4" />
                       </div>
                       <input
@@ -599,7 +599,7 @@ export default function LoginScreen({ onUnlock }) {
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         placeholder={t('login.accountName')}
-                        className="w-full pr-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all py-2.5"
+                        className="w-full pr-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl font-mono text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] transition-all py-2.5"
                         style={{ paddingLeft: '2.75rem' }}
                         autoFocus
                       />
@@ -609,7 +609,7 @@ export default function LoginScreen({ onUnlock }) {
                   {/* New password */}
                   <div>
                     <div className="relative">
-                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-slate-500">
+                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--text-tertiary)]">
                         <Lock className="w-4 h-4" />
                       </div>
                       <input
@@ -617,14 +617,14 @@ export default function LoginScreen({ onUnlock }) {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder={t('login.newPassword')}
-                        className="w-full pr-10 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all py-2.5"
+                        className="w-full pr-10 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl font-mono text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] transition-all py-2.5"
                         style={{ paddingLeft: '2.75rem' }}
                         minLength={4}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword((v) => !v)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
                         tabIndex={-1}
                         aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
                       >
@@ -640,7 +640,7 @@ export default function LoginScreen({ onUnlock }) {
                   {/* Confirm password */}
                   <div>
                     <div className="relative">
-                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-slate-500">
+                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--text-tertiary)]">
                         <Lock className="w-4 h-4" />
                       </div>
                       <input
@@ -648,14 +648,14 @@ export default function LoginScreen({ onUnlock }) {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder={t('login.confirmPassword')}
-                        className="w-full pr-10 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all py-2.5"
+                        className="w-full pr-10 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl font-mono text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] transition-all py-2.5"
                         style={{ paddingLeft: '2.75rem' }}
                         minLength={4}
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirm((v) => !v)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
                         tabIndex={-1}
                         aria-label={showConfirm ? t('login.hidePassword') : t('login.showPassword')}
                       >
@@ -673,7 +673,7 @@ export default function LoginScreen({ onUnlock }) {
                     <motion.p
                       initial={{ opacity: 0, y: -4 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="text-red-500 dark:text-red-400 text-sm text-center"
+                      className="text-[var(--danger)] text-sm text-center"
                     >
                       {error}
                     </motion.p>
@@ -699,7 +699,7 @@ export default function LoginScreen({ onUnlock }) {
                       setPassword('');
                       setConfirmPassword('');
                     }}
-                    className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors whitespace-nowrap"
+                    className="text-xs text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors whitespace-nowrap"
                   >
                     &larr; {t('login.backToLogin')}
                   </button>

@@ -9,14 +9,13 @@ const tabs = [
   { id: 'gantt', icon: CalendarRange },
   { id: 'compare', icon: BarChart3 },
   { id: 'ot', icon: Clock },
-  { id: 'labels', icon: Tag },
   { id: 'history', icon: History },
 ];
 
 export default function DashboardTabs({ activeTab, onTabChange }) {
   const { t } = useI18n();
   return (
-    <div className="flex items-center gap-1 mb-6 bg-[var(--bg-secondary)] p-1 rounded-lg border border-[var(--border-primary)] w-fit">
+    <div className="flex items-center gap-1 mb-6 bg-[var(--bg-secondary)] p-1 rounded-lg border border-[var(--border-primary)] w-fit overflow-x-auto">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
@@ -26,7 +25,7 @@ export default function DashboardTabs({ activeTab, onTabChange }) {
             onClick={() => onTabChange(tab.id)}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
+            className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
               isActive
                 ? 'bg-[var(--accent)] text-white shadow-sm'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)]'

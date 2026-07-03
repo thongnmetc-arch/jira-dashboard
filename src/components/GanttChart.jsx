@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { useI18n } from '../i18n';
 import { daysBetween, addDays, normalizeDay, fmtShortDate, toDateStr } from '../utils/dateUtils';
 import { getComponentColor } from '../utils/exportUtils';
@@ -31,9 +31,23 @@ function GanttBar({ t, leftPct, widthPct, dur, color, comp, showLabels }) {
 
 export default function GanttChart({ tasks }) {
   const { t } = useI18n();
+  const containerRef = useRef(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    const update = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.clientWidth);
+      }
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
   const { display, totalDays, padStart, padEnd, compColors } = useMemo(() => {
-    let valid = tasks.filter(t => t.startDate && (t.resolved || t.created));
-    valid.forEach(t => { t._end = t.resolved || t.created; });
+    let valid = tasks.filter(t => t.startDate);
+    valid.forEach(t => { t._end = t.dueDateTime || t.dueDate || t.resolved || t.created; });
 
     if (valid.length === 0) {
       return { display: [], totalDays: 0, padStart: null, padEnd: null, compColors: {} };
@@ -51,8 +65,8 @@ export default function GanttChart({ tasks }) {
 
     const sDay = normalizeDay(minDate);
     const eDay = normalizeDay(maxDate);
-    const pStart = addDays(sDay, -1);
-    const pEnd = addDays(eDay, 1);
+    const pStart = addDays(sDay, -2);
+    const pEnd = addDays(eDay, 7);
     const tDays = Math.max(Math.round(daysBetween(pStart, pEnd)), 1);
 
     const colors = {};
@@ -77,7 +91,11 @@ export default function GanttChart({ tasks }) {
     );
   }
 
-  const dayWidth = Math.max(28, Math.min(70, 1000 / totalDays));
+  const taskColWidth = 250;
+  // containerWidth is a dynamic state variable (set in useEffect via resize listener)
+  const cw = containerWidth || 900;
+  const available = Math.max(cw - taskColWidth - 32, 400);
+  const dayWidth = Math.max(28, Math.min(70, Math.floor(available / Math.max(totalDays, 1))));
   const showLabels = totalDays <= 40;
 
   const dateHeaders = [];
@@ -96,13 +114,13 @@ export default function GanttChart({ tasks }) {
       <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3 pb-2 border-b border-[var(--border-primary)]">
         {t('tabs.gantt')}
       </h3>
-      <div className="overflow-x-auto overflow-y-auto max-h-[500px] relative">
-        <table className="border-collapse w-full min-w-[700px] text-[0.78rem]">
+      <div ref={containerRef} className="overflow-x-auto overflow-y-auto max-h-[500px] relative">
+        <table className="border-collapse w-full text-[0.78rem]">
           <thead>
             <tr>
               <th
                 className="sticky top-0 z-20 bg-[var(--bg-secondary)] px-2 py-1.5 border-b border-[var(--border-primary)] text-left text-[0.65rem] font-semibold text-[var(--text-secondary)] uppercase tracking-wider whitespace-nowrap"
-                style={{ minWidth: '150px', left: 0 }}
+                style={{ width: '250px', left: 0 }}
               >
                 {t('table.summary')}
               </th>
@@ -114,7 +132,7 @@ export default function GanttChart({ tasks }) {
                       ? 'text-[var(--text-tertiary)] bg-[var(--bg-secondary)]'
                       : 'text-[var(--text-secondary)] bg-[var(--bg-secondary)]'
                   }`}
-                  style={{ width: dayWidth + 'px' }}
+                  style={{ width: dayWidth + 'px', maxWidth: dayWidth + 'px' }}
                 >
                   {dh.label}
                 </th>
@@ -131,17 +149,21 @@ export default function GanttChart({ tasks }) {
 
               const comp = t.comps.length > 0 ? t.comps[0] : '';
               const color = getComponentColor(comp);
-              const shortName = t.summary.length > 48 ? t.summary.slice(0, 45) + '…' : t.summary;
 
               return (
                 <tr key={t.key + idx} className="hover:bg-[var(--bg-secondary)] transition-colors">
                   <td
-                    className="sticky left-0 z-10 bg-[var(--bg-primary)] px-2 py-1 border-b border-[var(--border-primary)] whitespace-nowrap overflow-hidden text-ellipsis text-[0.78rem] text-[var(--text-primary)]"
-                    style={{ maxWidth: '180px' }}
+                    className="sticky left-0 z-10 bg-[var(--bg-primary)] pl-1 pr-2 py-1 border-b border-[var(--border-primary)]"
+                    style={{ width: '250px' }}
                     title={t.key + ': ' + t.summary}
                   >
-                    <span className="font-semibold text-[var(--accent)] text-[0.65rem] mr-1">{t.key}</span>
-                    {shortName}
+                    <div className="text-[0.7rem] leading-snug">
+                      <span className="font-semibold text-[var(--accent)] mr-1">{t.key}</span>
+                      <span className="text-[var(--text-primary)]">{t.summary}</span>
+                    </div>
+                    <div className="text-[0.6rem] text-[var(--text-tertiary)] mt-0.5">
+                      {toDateStr(t.startDate)} → {toDateStr(t._end)}
+                    </div>
                   </td>
                   <td
                     colSpan={dateHeaders.length}

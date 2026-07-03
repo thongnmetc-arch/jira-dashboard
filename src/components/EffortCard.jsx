@@ -113,9 +113,8 @@ export default function EffortCard({ tasks, variant = 'month' }) {
       </div>
 
       {effort > 1 && (
-        <div className="mt-2 text-[11px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded flex items-center gap-1">
-          <span>⚠️</span>
-          <span>{t('stats.effortWarning')}</span>
+        <div className="mt-2 text-[11px] text-[var(--danger)] bg-[var(--danger)]/10 px-2 py-1 rounded">
+          {t('stats.effortWarning')}
         </div>
       )}
     </motion.div>
