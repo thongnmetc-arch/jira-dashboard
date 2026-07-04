@@ -525,9 +525,9 @@ export default function LoginScreen({ onUnlock }) {
                       type="checkbox"
                       checked={remember}
                       onChange={(e) => setRemember(e.target.checked)}
-                      className="w-4 h-4 accent-[var(--accent)]"
+                      className="w-4 h-4 accent-[var(--accent)] transition-none"
                     />
-                    <span className="text-sm text-[var(--text-secondary)] whitespace-nowrap">
+                    <span className="text-sm text-[var(--text-secondary)] whitespace-nowrap transition-none">
                       {t('login.remember')}
                     </span>
                   </label>

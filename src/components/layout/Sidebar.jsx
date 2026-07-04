@@ -7,7 +7,6 @@ import {
   ChevronRight,
   ChevronDown,
   History,
-  Bookmark,
   Calendar,
   Clock,
   Table,
@@ -149,8 +148,14 @@ export default function Sidebar() {
         {/* Weekly Planner parent */}
         <motion.button
           onClick={() => {
-            navigate('/work-plan/weekly');
-            setWeeklyExpanded(!weeklyExpanded);
+            if (isWeeklyPlanner) {
+              // Already on work-plan — just toggle
+              setWeeklyExpanded(!weeklyExpanded);
+            } else {
+              // Navigate to work-plan and expand
+              navigate('/work-plan/weekly');
+              setWeeklyExpanded(true);
+            }
           }}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
@@ -166,6 +171,13 @@ export default function Sidebar() {
             <>
               <span className="truncate flex-1 text-left">{t('sidebar.weeklyPlanner')}</span>
               <ChevronDown className={`w-3 h-3 transition-transform ${weeklyExpanded ? 'rotate-180' : ''}`} />
+              {isWeeklyPlanner && !sidebarCollapsed && (
+                <motion.div
+                  layoutId="activeIndicator"
+                  className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--accent)]"
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                />
+              )}
             </>
           )}
         </motion.button>
@@ -180,19 +192,7 @@ export default function Sidebar() {
           </div>
         )}
 
-        {/* Bookmarklet */}
-        <button
-          onClick={() => dispatch({ type: 'SET_BOOKMARKLET_PANEL_OPEN', payload: true })}
-          className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
-            sidebarCollapsed ? 'justify-center px-0' : ''
-          } text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]`}
-          title={sidebarCollapsed ? t('sidebar.bookmarklet') : undefined}
-        >
-          <Bookmark className="w-4 h-4 flex-shrink-0" />
-          {!sidebarCollapsed && (
-            <span className="truncate">{t('sidebar.bookmarklet')}</span>
-          )}
-        </button>
+
       </nav>
 
       {/* Collapse button */}

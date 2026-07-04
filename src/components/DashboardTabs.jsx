@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Table, BarChart3, CalendarRange, PieChart, Clock, Tag, History } from 'lucide-react';
+import { LayoutDashboard, Table, BarChart3, CalendarRange, PieChart, Clock, History } from 'lucide-react';
 import { useI18n } from '../i18n';
 
 const tabs = [

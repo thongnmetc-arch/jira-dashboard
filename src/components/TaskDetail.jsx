@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Copy, CheckCircle2, ExternalLink, Plus } from 'lucide-react';
+import { X, Copy, CheckCircle2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useI18n } from '../i18n';

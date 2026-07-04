@@ -2,13 +2,13 @@
   "_pipeline": {
     "created_at": "2026-06-30T07:36:34.752Z",
     "pmo_session_id": "ses_0eeed2fd7ffenq81U3KUVnlmPL",
-    "updated_at": "2026-06-30T07:36:34.752Z"
+    "updated_at": "2026-07-04T10:00:00.000Z"
   },
   "blocks": [
     {
       "id": "h1",
       "level": 1,
-      "text": "Đặc tả yêu cầu phần mềm (SRS)",
+      "text": "Đặc tả yêu cầu phần mềm (SRS) — JIRA Dashboard v1.2.0",
       "type": "heading"
     },
     {
@@ -19,7 +19,7 @@
     },
     {
       "id": "p1",
-      "text": "Tài liệu này mô tả các yêu cầu phần mềm cho ứng dụng **JIRA Time Tracking Dashboard** — một Single Page Application (SPA) giúp trực quan hóa và phân tích dữ liệu thời gian làm việc từ JIRA. Ứng dụng cho phép nhập dữ liệu từ HTML export, JIRA API, và Bookmarklet, sau đó hiển thị dashboard với biểu đồ, bảng dữ liệu, và các công cụ phân tích effort.",
+      "text": "Tài liệu này mô tả các yêu cầu phần mềm cho ứng dụng **JIRA Time Tracking Dashboard v1.2.0** — một Single Page Application (SPA) với React 19 + react-router-dom. Ứng dụng cho phép kết nối đến JIRA qua REST API (Basic Auth), hiển thị dashboard 7 tab với biểu đồ Chart.js, bảng dữ liệu, và các công cụ phân tích effort.",
       "type": "paragraph"
     },
     {
@@ -36,7 +36,7 @@
     },
     {
       "id": "p2",
-      "text": "Hệ thống cung cấp giao diện trực quan để theo dõi thời gian làm việc (time tracking) từ JIRA, tính toán chỉ số effort, quản lý OT/nghỉ phép, gán nhãn, lưu snapshot lịch sử và xuất báo cáo.",
+      "text": "Hệ thống cung cấp giao diện trực quan để theo dõi thời gian làm việc (time tracking) từ JIRA, tính toán chỉ số effort, quản lý OT/nghỉ phép, gán nhãn, lưu snapshot lịch sử, và xuất báo cáo.",
       "type": "paragraph"
     },
     {
@@ -48,16 +48,21 @@
     {
       "id": "b1",
       "items": [
-        "Nhập dữ liệu từ JIRA qua 3 kênh: HTML export, API (Basic Auth), Bookmarklet",
-        "Dashboard với biểu đồ Chart.js (Doughnut, Bar, Line, Burndown, Gantt)",
+        "Login bảo vệ app (SHA-256, lockout 5 lần)",
+        "Wizard 5 bước: Login → Connect → Project → Query → Dashboard",
+        "Kết nối JIRA qua API Token (Basic Auth)",
+        "Dashboard 7 tab: Overview, Charts, Data, Gantt, Compare, OT, History",
+        "Biểu đồ Chart.js (Sprint, Component, Daily, Type, Assignee, Burndown)",
         "Bảng dữ liệu (DataTable) với phân trang, sắp xếp, tìm kiếm",
         "Tính toán effort dựa trên thời gian chuẩn và giờ ước tính",
         "Quản lý OT và nghỉ phép",
         "Gán nhãn thủ công, hàng loạt, tự động (auto-rule)",
         "Lưu snapshot lịch sử và so sánh delta",
+        "Weekly Planner: lên lịch tuần, log worklog lên JIRA",
+        "Create Task: tạo task JIRA từ ứng dụng",
         "Xuất CSV/JSON",
         "Electron desktop app (portable .exe)",
-        "Deploy qua Docker lên Kubernetes (Rancher)"
+        "Đa ngôn ngữ (Tiếng Việt / English)"
       ],
       "type": "bullets"
     },
@@ -71,7 +76,7 @@
       "id": "b2",
       "items": [
         "**Quản lý dự án**: Xem tổng quan effort, phân bổ công việc theo sprint/thành viên",
-        "**Developer**: Xem chi tiết task của mình, theo dõi tiến độ",
+        "**Developer**: Xem chi tiết task của mình, theo dõi tiến độ, lên kế hoạch tuần",
         "**Quản trị hệ thống**: Triển khai và vận hành ứng dụng"
       ],
       "type": "bullets"
@@ -79,7 +84,7 @@
     {
       "id": "h7",
       "level": 2,
-      "text": "3. Yêu cầu chức năng",
+      "text": "3. Yêu cầu chức năng chính",
       "type": "heading"
     },
     {
@@ -106,197 +111,42 @@
       "type": "heading"
     },
     {
-      "columns": [
-        "Trạng thái",
-        "Tính vào Effort?",
-        "Ghi chú"
-      ],
+      "columns": ["Trạng thái", "Tính vào Effort?", "Ghi chú"],
       "id": "t1",
       "rows": [
-        [
-          "Resolved",
-          "✅ Có",
-          "Task đã hoàn thành"
-        ],
-        [
-          "Closed",
-          "✅ Có",
-          "Task đã đóng"
-        ],
-        [
-          "Cancelled",
-          "❌ Không",
-          "Task bị hủy, không tính công sức"
-        ],
-        [
-          "Khác (Open, In Progress, ...)",
-          "❌ Không",
-          "Task chưa hoàn thành, chưa có kết quả cuối cùng"
-        ]
-      ],
-      "type": "table"
-    },
-    {
-      "id": "h10",
-      "level": 4,
-      "text": "3.1.2. Nguồn dữ liệu",
-      "type": "heading"
-    },
-    {
-      "columns": [
-        "Biến",
-        "Nguồn JIRA",
-        "Fallback"
-      ],
-      "id": "t2",
-      "rows": [
-        [
-          "Tổng giờ ước tính",
-          "`fields.timeoriginalestimate` (Original Estimate)",
-          "`fields.timeestimate` → `fields.timespent` → 0"
-        ],
-        [
-          "Số ngày làm việc",
-          "Tính từ `resolved` date của các task (lấy tháng có nhiều task nhất)",
-          "—"
-        ],
-        [
-          "OT",
-          "Nhập thủ công từ OT Panel",
-          "0"
-        ],
-        [
-          "Nghỉ phép",
-          "Nhập thủ công từ OT Panel",
-          "0"
-        ]
+        ["Resolved", "✅ Có", "Task đã hoàn thành"],
+        ["Closed", "✅ Có", "Task đã đóng"],
+        ["Cancelled", "❌ Không", "Task bị hủy, không tính công sức"],
+        ["Khác (Open, In Progress, ...)", "❌ Không", "Task chưa hoàn thành"]
       ],
       "type": "table"
     },
     {
       "id": "cl1",
-      "text": "Ý nghĩa: Effort < 1 → số giờ chuẩn ít hơn ước tính (vượt kế hoạch). Effort = 1 → đúng ước tính. Effort > 1 → số giờ chuẩn nhiều hơn ước tính (cảnh báo cần kiểm tra).",
+      "text": "Ý nghĩa: Effort < 1 → vượt kế hoạch (xanh). Effort = 1 → đúng ước tính (vàng). Effort > 1 → thiếu (đỏ, cần kiểm tra).",
       "tone": "info",
       "type": "callout"
     },
     {
       "id": "h11",
       "level": 3,
-      "text": "3.2. Cảnh báo Task Chưa Đóng",
+      "text": "3.2. Routes và Navigation",
       "type": "heading"
     },
     {
-      "id": "p4",
-      "text": "Dashboard hiển thị cảnh báo màu đỏ khi có task chưa được đóng. **Các trạng thái sau không bị cảnh báo:**",
-      "type": "paragraph"
-    },
-    {
-      "id": "b3",
-      "items": [
-        "Closed",
-        "Resolved",
-        "Cancelled"
-      ],
-      "type": "bullets"
-    },
-    {
-      "id": "p5",
-      "text": "Chỉ các task có trạng thái khác (Open, In Progress, Reopened, ...) mới hiển thị trong danh sách cảnh báo.",
-      "type": "paragraph"
-    },
-    {
-      "id": "h12",
-      "level": 3,
-      "text": "3.3. Hiển Thị Dữ Liệu",
-      "type": "heading"
-    },
-    {
-      "id": "h13",
-      "level": 4,
-      "text": "3.3.1. Bảng dữ liệu (DataTable)",
-      "type": "heading"
-    },
-    {
-      "columns": [
-        "Cột",
-        "Trường dữ liệu",
-        "Nguồn"
-      ],
-      "id": "t3",
+      "columns": ["Route", "Component", "Mô tả"],
+      "id": "t_routes",
       "rows": [
-        [
-          "Issue Key",
-          "`key`",
-          "JIRA API"
-        ],
-        [
-          "Tóm tắt",
-          "`summary`",
-          "JIRA API"
-        ],
-        [
-          "Phân hệ",
-          "`comps`",
-          "JIRA API"
-        ],
-        [
-          "Sprint",
-          "`primarySprint`",
-          "JIRA API"
-        ],
-        [
-          "Người thực hiện",
-          "`assignee`",
-          "JIRA API"
-        ],
-        [
-          "Giờ log",
-          "`timeSpentHr`",
-          "`fields.timespent` / 3600"
-        ],
-        [
-          "Giờ ước tính",
-          "`originalEstimateHr`",
-          "`fields.timeoriginalestimate` / 3600 (fallback `estimateHr`)"
-        ]
+        ["/login", "LoginScreen", "Đăng nhập SHA-256"],
+        ["/connect", "JiraConnect", "Kết nối JIRA API"],
+        ["/projects", "ProjectSelector", "Chọn project grid card"],
+        ["/query", "QueryConfig", "Cấu hình JQL"],
+        ["/dashboard", "Dashboard", "Dashboard chính"],
+        ["/dashboard/:tab", "Dashboard", "Dashboard theo tab"],
+        ["/work-plan/weekly", "WeeklyPlanner", "Lên lịch tuần"],
+        ["/work-plan/create", "CreateTaskView", "Tạo task JIRA"]
       ],
       "type": "table"
-    },
-    {
-      "id": "h14",
-      "level": 4,
-      "text": "3.3.2. Thống kê tổng quan (StatsGrid)",
-      "type": "heading"
-    },
-    {
-      "id": "p6",
-      "text": "StatsGrid hiển thị 4 chỉ số, **chỉ tính trên các task Resolved và Closed**:",
-      "type": "paragraph"
-    },
-    {
-      "id": "b4",
-      "items": [
-        "Tổng số công việc: số task Resolved + Closed",
-        "Tổng giờ đã log: tổng `timeSpentHr` của task Resolved + Closed",
-        "Tổng giờ ước tính: tổng `originalEstimateHr` của task Resolved + Closed",
-        "Thời gian TB mỗi task: tổng giờ log / số task"
-      ],
-      "type": "bullets"
-    },
-    {
-      "id": "h15",
-      "level": 3,
-      "text": "3.4. Bookmarklet",
-      "type": "heading"
-    },
-    {
-      "id": "b5",
-      "items": [
-        "**URL Dashboard động**: Dùng `window.location.origin` thay vì hardcode `localhost:5173`",
-        "**Copy code**: Hỗ trợ cả `navigator.clipboard` và fallback `execCommand('copy')` để hoạt động trên HTTP",
-        "**Dữ liệu gửi về**: Mã hóa base64 qua URL hash (`#jira-data=...`)"
-      ],
-      "type": "bullets"
     },
     {
       "id": "h16",
@@ -305,50 +155,33 @@
       "type": "heading"
     },
     {
-      "columns": [
-        "Hạng mục",
-        "Yêu cầu"
-      ],
+      "columns": ["Hạng mục", "Yêu cầu"],
       "id": "t4",
       "rows": [
-        [
-          "Hiệu năng",
-          "Dashboard tải và render < 3 giây với ≤ 500 task"
-        ],
-        [
-          "Bảo mật",
-          "JIRA API Token lưu trong Electron config file (không lưu localStorage); HTTPS trên production"
-        ],
-        [
-          "Tương thích",
-          "Chrome, Edge, Firefox (desktop). Electron chạy trên Windows."
-        ],
-        [
-          "Khả dụng",
-          "Single-page, không phụ thuộc backend (dữ liệu lưu localStorage)"
-        ],
-        [
-          "Khả năng mở rộng",
-          "Deploy qua Docker + Kubernetes, scale ngang qua replicas"
-        ]
+        ["Hiệu năng", "Dashboard tải và render < 3 giây với ≤ 500 task"],
+        ["Bảo mật", "SHA-256 hash cho password; API Token gửi qua Header Authorization"],
+        ["Tương thích", "Chrome, Edge, Firefox (desktop). Electron chạy trên Windows."],
+        ["Khả dụng", "Single-page, không phụ thuộc backend (dữ liệu lưu localStorage)"],
+        ["Đa ngôn ngữ", "Tiếng Việt và English qua i18n provider"]
       ],
       "type": "table"
     },
     {
       "id": "h17",
       "level": 2,
-      "text": "5. Ràng buộc thiết kế",
+      "text": "5. Công nghệ sử dụng",
       "type": "heading"
     },
     {
       "id": "b6",
       "items": [
-        "**Frontend**: React 19 + Vite 6 + Tailwind CSS 4",
+        "**Frontend**: React 19 + Vite 6 + react-router-dom 6 + Tailwind CSS 4",
         "**Biểu đồ**: Chart.js 4 + react-chartjs-2",
-        "**State**: Context API + useReducer",
-        "**Deploy**: Docker (multi-stage: node:20-alpine build + nginx:1.27-alpine serve) → Harbor → Rancher/Kubernetes",
-        "**Registry**: registry.etc.vn (Harbor)",
-        "**Proxy API JIRA**: Nginx reverse proxy `/api/jira` → JIRA backend (SSL verify off cho internal)"
+        "**Animation**: Framer Motion 12",
+        "**State**: Context API + useReducer (30+ fields, 15+ actions)",
+        "**Icons**: Lucide React",
+        "**Desktop**: Electron 42 + electron-builder",
+        "**Deploy**: Docker (nginx:1.27-alpine) → Harbor → Kubernetes"
       ],
       "type": "bullets"
     },
@@ -359,18 +192,11 @@
       "type": "heading"
     },
     {
-      "columns": [
-        "Ngày",
-        "Phiên bản",
-        "Mô tả thay đổi"
-      ],
+      "columns": ["Ngày", "Phiên bản", "Mô tả thay đổi"],
       "id": "t5",
       "rows": [
-        [
-          "30/06/2026",
-          "1.0",
-          "Khởi tạo SRS. Ghi nhận các thay đổi: công thức effort (dùng originalEstimateHr), lọc Resolved+Closed, hiển thị originalEstimateHr, bookmarklet URL động, cảnh báo loại trừ Cancelled."
-        ]
+        ["04/07/2026", "v1.2.0", "Login screen, Wizard flow, Weekly Planner, Create Task, 7 dashboard tabs, auto-refresh, i18n, xoá Bookmarklet/CSV import"],
+        ["30/06/2026", "1.0", "Khởi tạo SRS"]
       ],
       "type": "table"
     }
@@ -380,6 +206,6 @@
   "id": "jira-dashboard-srs",
   "schema_version": "1.0",
   "session_id": "ses_0eeed2fd7ffenq81U3KUVnlmPL",
-  "title": "Đặc tả yêu cầu phần mềm — JIRA Dashboard",
-  "updated_at": "2026-06-30T07:36:34.752Z"
+  "title": "Đặc tả yêu cầu phần mềm — JIRA Dashboard v1.2.0",
+  "updated_at": "2026-07-04T10:00:00.000Z"
 }

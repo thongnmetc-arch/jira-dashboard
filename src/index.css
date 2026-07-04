@@ -150,22 +150,6 @@ input::placeholder {
 /* Chart card — tighter padding */
 .chart-card { padding: 16px !important; }
 
-/* Filter select — pill style */
-.filter-select {
-  border-radius: 9999px !important;
-  padding: 6px 14px !important;
-  font-size: 0.8rem !important;
-}
-
-/* Table styling */
-.table-header {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
 /* ── Responsive: Mobile (< 768px) ───────────────────────────────────── */
 @media (max-width: 768px) {
   .app-sidebar {

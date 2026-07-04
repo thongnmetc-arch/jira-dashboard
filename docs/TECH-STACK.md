@@ -5,11 +5,11 @@
 | Trường           | Nội dung                                                     |
 |------------------|---------------------------------------------------------------|
 | **Dự án**        | JIRA Time Tracking Dashboard                                  |
-| **Phiên bản**    | 3.0                                                           |
-| **Ngày**         | 27/06/2026                                                    |
+| **Phiên bản**    | v1.2.0                                                        |
+| **Ngày**         | 04/07/2026                                                    |
 | **Repository**   | `jira-dashboard-react/`                                       |
 | **Ngôn ngữ**     | JavaScript (ES Modules) + JSX                                 |
-| **Loại ứng dụng**| Single-Page Application (SPA) — React 18                      |
+| **Loại ứng dụng**| Single-Page Application (SPA) — React 19 + react-router-dom   |
 
 ---
 
@@ -43,23 +43,26 @@
 
 | Lĩnh vực              | Công nghệ                     | Phiên bản  | Mục đích                                            |
 |-----------------------|-------------------------------|------------|-----------------------------------------------------|
-| Frontend Framework    | React                         | 19.0       | Xây dựng giao diện component-based, SPA (React 18 APIs) |
+| Frontend Framework    | React                         | 19.0       | Xây dựng giao diện component-based, SPA (React 19 APIs) |
 | Build Tool            | Vite                          | 6.0        | Bundle ES modules, dev server HMR, production build |
+| Routing               | react-router-dom              | 6.30       | Client-side routing: /login, wizard steps, dashboard tabs, work-plan |
 | Styling               | Tailwind CSS                  | 4.0        | Utility-first CSS, dark mode via `dark:` prefix     |
-| Charts                | Chart.js + react-chartjs-2    | 4.4.7 + 5.3| 5 biểu đồ phân tích dữ liệu JIRA                    |
+| Charts                | Chart.js + react-chartjs-2    | 4.4.7 + 5.3| 6 biểu đồ phân tích dữ liệu JIRA (Sprint, Component, Daily, Type, Assignee, Burndown) |
 | Animation             | Framer Motion                 | 12.0       | Stagger, AnimatePresence, layout animations         |
-| State Management      | Context API + useReducer      | (React)    | State toàn cục: tasks, filters, dark mode, OT/leave |
-| Icons                 | Lucide React                  | 0.400      | Sun, Moon, Clock, Upload icons                      |
+| State Management      | Context API + useReducer      | (React)    | State toàn cục: tasks, filters, dark mode, OT/leave, labels, history, wizard, dashboard tabs |
+| Icons                 | Lucide React                  | 0.400      | Dashboard, Table, Calendar, History, BarChart3, Clock, etc. |
 | Date Handling         | Custom (`utils/dateUtils.js`) | —          | Parse JIRA date format, count working days          |
-| CSV Parsing           | Custom (`utils/csvParser.js`) | —          | 2-pass parser: BOM, semicolon, quoted fields        |
+| Authentication        | Custom (`utils/authUtils.js`) | —          | SHA-256 password hash, account lockout after 5 failed attempts |
+| Log Worklog           | Custom (`utils/jiraWorklog.js`)| —         | Log worklog entries to JIRA via REST API            |
+| Labels                | Custom (`utils/labelUtils.js`)| —          | Label definitions, auto-rules, task-label sync      |
 | Plugin (Vite)         | @vitejs/plugin-react          | 4.3        | React Fast Refresh, JSX transform                   |
 | Plugin (Vite)         | @tailwindcss/vite             | 4.0        | Tailwind CSS v4 integration                         |
 
 **File cấu hình chính:**
-- `C:\Users\Admin\Downloads\JIRA\jira-dashboard-react\package.json` — dependencies và scripts
-- `C:\Users\Admin\Downloads\JIRA\jira-dashboard-react\vite.config.js` — cấu hình Vite (plugins, base)
-- `C:\Users\Admin\Downloads\JIRA\jira-dashboard-react\index.html` — entry HTML
-- `C:\Users\Admin\Downloads\JIRA\jira-dashboard-react\src\index.css` — CSS custom properties + Tailwind import
+- `E:\JIRA\jira-dashboard-react\package.json` — dependencies và scripts
+- `E:\JIRA\jira-dashboard-react\vite.config.js` — cấu hình Vite (plugins, base)
+- `E:\JIRA\jira-dashboard-react\index.html` — entry HTML
+- `E:\JIRA\jira-dashboard-react\src\index.css` — CSS custom properties + Tailwind import
 
 ---
 
@@ -69,80 +72,103 @@
 
 ```mermaid
 graph TB
-    subgraph "React Component Tree (v3.0)"
-        App["App.jsx<br/><b>AppProvider</b> (Context Provider)"]
-        AppC["AppContent.jsx<br/>&lt;AnimatePresence mode=wait&gt;
-        <br/>Đọc URL hash (bookmarklet)<br/>Lắng nghe hashchange"]
+    subgraph "React Component Tree (v1.2.0)"
+        App["App.jsx<br/><b>AppProvider</b> (Context Provider)<br/><b>Routes</b> (react-router-dom)"]
         
-        subgraph "AppShell (Layout - always rendered)"
+        subgraph "Login Route"
+            LOGIN["/login → LoginScreen.jsx<br/>SHA-256 password<br/>Dark/Light mode 2 cột<br/>5-attempt lockout"]
+        end
+        
+        subgraph "Wizard Flow Routes"
+            CON["/connect → JiraConnect.jsx<br/>API Token form<br/>URL, Token, Project"]
+            PROJ["/projects → ProjectSelector.jsx<br/>Grid card project picker<br/>Search + responsive"]
+            QRY["/query → QueryConfig.jsx<br/>JQL input<br/>Assignee filter"]
+        end
+        
+        subgraph "AppShell (Layout - always rendered after login)"
             AS["AppShell.jsx<br/>TopBar + Sidebar + Main"]
-            TB["TopBar.jsx<br/>Breadcrumb, connection badge<br/>Theme toggle Sun/Moon<br/>Mobile menu button"]
-            SB["Sidebar.jsx<br/>Tổng quan | Dữ liệu<br/>OT & Nghỉ phép | Kết nối JIRA<br/>Collapse/expand animation"]
+            TB["TopBar.jsx<br/>Breadcrumb, connection badge<br/>Theme toggle Sun/Moon<br/>Mobile menu button<br/>Language switcher"]
+            SB["Sidebar.jsx<br/>Dashboard (collapse submenu)<br/>Weekly Planner (submenu)<br/>Collapse/expand animation<br/>Framer Motion"]
         end
         
-        subgraph "Before load (state.isLoaded === false)"
-            JC["JiraConnect.jsx<br/>API Token form (URL, email, token, key, JQL)<br/>Bookmarklet generator + instructions"]
+        subgraph "Dashboard Routes (/dashboard/:tab)"
+            D["Dashboard.jsx<br/>Data source info bar<br/>JQL used badge<br/>Overdue warning<br/>Auto-refresh interval<br/>Back-to-top button<br/>Manual refresh button"]
+            DTABS["DashboardTabs.jsx<br/>Tab: Overview | Charts | Data<br/>Gantt | Compare | OT | History"]
+            
+            subgraph "Tab Panels"
+                OP["OverviewPanel<br/>FilterBar + StatsGrid"]
+                CP["ChartsPanel<br/>6 chart sub-tabs<br/>(Sprint/Component/Daily/<br/>Type/Assignee/Burndown)"]
+                DP["DataPanel<br/>DataTable"]
+                GP["GanttPanel<br/>GanttChart"]
+                COMP["ComparePanel<br/>MonthComparison + AutoReport<br/>+ CompareView"]
+                OTP["OT Panel → OTPanelInline.jsx<br/>Quick-add OT/Leave"]
+                HIST["History Panel → HistoryPanelInline.jsx<br/>Snapshots save/load/compare"]
+            end
+            
+            subgraph "Chart Components (6 loại)"
+                SB["SprintBarChart.jsx"]
+                CB["ComponentBarChart.jsx"]
+                DTC["DailyTrendChart.jsx"]
+                TDC["TypeDoughnutChart.jsx"]
+                AB["AssigneeBarChart.jsx"]
+                BD["BurndownChart.jsx"]
+            end
         end
         
-        subgraph "After load (state.isLoaded === true)"
-            D["Dashboard.jsx<br/>Data source info bar<br/>JQL used badge<br/>Overdue warning<br/>Auto-refresh interval<br/>Back-to-top button"]
-            FB["FilterBar.jsx<br/>Sprint | Component<br/>Assignee | Date range<br/>Pill-style compact<br/>Reset filter button"]
-            SG["StatsGrid.jsx<br/>5 cards (4 stats + Effort)<br/>Stagger animation<br/>AnimatedNumber"]
-            CG["ChartGrid.jsx<br/>Grid container 2 cột"]
-            GT["GanttChart.jsx<br/>HTML table timeline<br/>Tooltip, weekend markers"]
-            DT["DataTable.jsx<br/>Sort, search, paginate<br/>20 rows/page, 8 columns<br/>Lucide sort icons"]
-            OP["OTPanel.jsx<br/>Slide drawer (phải)<br/>Quick-add buttons (OT +0.5~8h, Leave +1.75~14h)<br/>Lưu → đóng panel"]
-        end
-        
-        subgraph "Chart Components"
-            SB["SprintBarChart.jsx<br/>Bar (nhóm)"]
-            CB["ComponentBarChart.jsx<br/>Bar (ngang)"]
-            DTC["DailyTrendChart.jsx<br/>Bar + Line (lũy kế)"]
-            TDC["TypeDoughnutChart.jsx<br/>Doughnut"]
-            AB["AssigneeBarChart.jsx<br/>Bar (ngang) full-width"]
+        subgraph "Work Plan Routes"
+            WP["/work-plan/weekly → WeeklyPlanner.jsx<br/>Calendar view, log worklog<br/>Drag/click to add tasks<br/>35h target"]
+            CT["/work-plan/create → CreateTaskView.jsx<br/>Create JIRA task<br/>Summary, Description, Project"]
         end
 
         subgraph "Utility Modules"
-            CSV["csvParser.js<br/>parseCSV()"]
+            AUTH["authUtils.js<br/>hashPassword, isPasswordSet<br/>checkLockout"]
             DTU["dateUtils.js<br/>parseJiraDate, countWorkingDays<br/>fmtShortDate, daysBetween"]
             EFF["effortCalculator.js<br/>calculateEffort()<br/>Công thức: availableHr / totalHr"]
             EXP["exportUtils.js<br/>exportCSV, exportChartPNG<br/>COMP_COLORS, CHART_PALETTE"]
             JAPI["jiraApi.js<br/>testJiraConnection()<br/>fetchJiraIssues()<br/>parseJiraIssue()"]
+            LAB["labelUtils.js<br/>createLabelDef, syncTaskLabels<br/>runAutoRules"]
+            HISTU["historyUtils.js<br/>saveSnapshot, loadSnapshot<br/>getSnapshotList"]
+            WL["jiraWorklog.js<br/>logWorklog()<br/>post to JIRA REST API"]
+        end
+
+        subgraph "Cross-cutting"
+            I18N["i18n/index.jsx<br/>en.js + vi.js<br/>useI18n() hook"]
+            CTX["AppContext.jsx<br/>useReducer + Context API<br/>30+ state fields<br/>15+ action types"]
         end
 
         subgraph "Data Sources"
-            FILE[File CSV xuất từ JIRA]
-            JIRA_API[JIRA REST API v3<br/>(qua Vite proxy hoặc direct)]
-            BKML[Bookmarklet<br/>(URL hash #jira-data=)]
+            JIRA_API[JIRA REST API v3<br/>(Basic Auth)]
+            HIST_SRC[History Snapshots<br/>localStorage]
         end
 
-        App --> AppC
-        AppC --> AS
+        App --> LOGIN
+        App --> CON
+        App --> PROJ
+        App --> QRY
+        App --> AS
         AS --> TB
         AS --> SB
-        AS --> JC
         AS --> D
-        D --> FB
-        D --> SG
-        D --> CG --> SB & CB & DTC & TDC & AB
-        D --> GT
-        D --> DT
-        D --> OP
-        JC --> JAPI
-        FILE --> CSV
+        D --> DTABS
+        DTABS --> OP & CP & DP & GP & COMP & OTP & HIST
+        CP --> SB & CB & DTC & TDC & AB & BD
+        SB --> WP
+        SB --> CT
         JIRA_API --> JAPI
-        BKML -->|hashchange| AppC
-        CSV -->|SET_TASKS| AppC
-        JAPI -->|SET_TASKS| AppC
-        SG --> EFF
-        EFF --> DTU
+        JAPI -->|dispatch SET_TASKS| CTX
+        HIST_SRC -->|dispatch SET_TASKS| CTX
+        CTX -->|state| D
+        I18N --> TB & SB & D
+        AUTH --> LOGIN
+        LAB -->|syncTaskLabels| CTX
+        WL -->|logWorklog| JAPI
     end
 
     style App fill:#6366f1,color:#fff,stroke:#4338ca
     style AS fill:#4f46e5,color:#fff
-    style JC fill:#10b981,color:#fff
-    style SG fill:#f59e0b,color:#fff
-    style BKML fill:#8b5cf6,color:#fff
+    style LOGIN fill:#0ea5e9,color:#fff
+    style CON fill:#10b981,color:#fff
+    style D fill:#f59e0b,color:#fff
 ```
 
 ### 2.2 Sơ đồ luồng dữ liệu
@@ -150,75 +176,77 @@ graph TB
 ```mermaid
 flowchart LR
     subgraph "Input"
-        A[File CSV JIRA]
-        A2[JIRA REST API]
-        A3[Bookmarklet<br/>URL hash #jira-data=]
+        A2[JIRA REST API<br/>(Basic Auth)]
+        HIST["History Snapshots<br/>localStorage"]
     end
 
-    subgraph "Parse Layer"
-        B["FileReader<br/>readAsText(UTF-8)"]
-        C["csvParser.js<br/>parseCSV()<br/>2-pass: rows → fields"]
-        D["Column Discovery<br/>Tìm vị trí cột<br/>Issue Key, Time Spent, etc."]
-        E["Task Builder<br/>Map dòng → object Task<br/>timeSpentHr = sec/3600"]
+    subgraph "API / Data Layer"
         JAPI["jiraApi.js<br/>testJiraConnection()<br/>fetchJiraIssues()<br/>parseJiraIssue()"]
-        URLH["App.jsx<br/>Đọc hashchange<br/>atob -> JSON.parse"]
+        HISTU["historyUtils.js<br/>saveSnapshot, loadSnapshot<br/>getSnapshotList"]
+        WL["jiraWorklog.js<br/>logWorklog()"]
+        LAB["labelUtils.js<br/>syncTaskLabels, runAutoRules"]
     end
 
     subgraph "State Layer (Context API)"
-        F["AppContext<br/>useReducer<br/>state.allTasks<br/>state.jiraConfig<br/>state.dataSource<br/>state.jqlUsed"]
+        F["AppContext<br/>useReducer<br/>state.allTasks, state.filters<br/>state.jiraConfig, state.dataSource<br/>state.labelDefs, state.labelAssignments<br/>state.autoRules, state.compareSnapshots<br/>state.dashboardTab, state.wizard*"]
         G["getFilteredTasks()<br/>useCallback filter"]
     end
 
-    subgraph "Render Layer"
-        H["FilterBar.jsx<br/>SET_FILTERS"]
-        I["StatsGrid.jsx<br/>useMemo compute stats"]
-        J["Chart Components<br/>useMemo chart data<br/>react-chartjs-2"]
-        K["GanttChart.jsx<br/>useMemo compute timeline"]
-        L["DataTable.jsx<br/>useMemo sort + search + paginate"]
-        M["EffortCard.jsx<br/>calculateEffort()<br/>Công thức ratio"]
-        N["OTPanel.jsx<br/>SET_OT_LEAVE<br/>Simple totals (không date)"]
-        S["Sidebar.jsx<br/>SET_SIDEBAR_COLLAPSED<br/>SET_ACTIVE_SECTION<br/>SET_OT_PANEL_OPEN"]
+    subgraph "Wizard Flow"
+        W1["/connect<br/>JiraConnect.jsx<br/>Nhập URL + Token + Project"]
+        W2["/projects<br/>ProjectSelector.jsx<br/>Grid card picker"]
+        W3["/query<br/>QueryConfig.jsx<br/>JQL + Assignee"]
+        W4["/dashboard<br/>Dashboard load"]
+    end
+
+    subgraph "Render Layer (Dashboard)"
+        DTABS["DashboardTabs<br/>Tab: overview/charts/data/gantt/compare/ot/history"]
+        FB["FilterBar.jsx<br/>SET_FILTERS"]
+        SG["StatsGrid.jsx<br/>useMemo compute stats"]
+        CP["ChartsPanel<br/>6 chart types"]
+        GT["GanttChart.jsx<br/>useMemo compute timeline"]
+        DT["DataTable.jsx<br/>useMemo sort + search + paginate"]
+        OTP["OTPanelInline.jsx<br/>SET_OT_LEAVE"]
+        HP["HistoryPanelInline.jsx<br/>Save/Load/Compare snapshots"]
+        EFF["EffortCard.jsx<br/>calculateEffort()<br/>Công thức ratio"]
     end
 
     subgraph "Persistence"
-        O["localStorage<br/>jira-dash-theme<br/>jira-dash-ot-leave<br/>jira-dash-config"]
+        O["localStorage<br/>jira-dash-theme<br/>jira-dash-ot-leave<br/>jira-dash-config<br/>jira-dash-labels<br/>jira-dash-history<br/>jira-dash-password"]
     end
 
-    A --> B
-    B --> C
-    C --> D
-    D --> E
-    E -->|dispatch SET_TASKS| F
     A2 --> JAPI
     JAPI -->|dispatch SET_TASKS| F
-    A3 --> URLH
-    URLH -->|dispatch SET_TASKS| F
+    HIST --> HISTU
+    HISTU -->|dispatch SET_TASKS| F
     F --> G
-    H -->|dispatch SET_FILTERS| F
-    N -->|dispatch SET_OT_LEAVE| F
-    S -->|layout actions| F
+    W1 --> W2 --> W3 --> W4
+    W4 --> JAPI
+    FB -->|dispatch SET_FILTERS| F
+    OTP -->|dispatch SET_OT_LEAVE| F
+    HP -->|dispatch SET_TASKS / compareSnapshots| F
     F -->|state.darkMode| O
     F -->|state.otLeaveData| O
     F -->|state.jiraConfig| O
+    F -->|state.labelDefs/Assignments| O
     O -->|initializer| F
-    G --> I
-    G --> J
-    G --> K
-    G --> L
-    G --> M
-    M --> N
+    G --> DTABS
+    DTABS --> SG & CP & GT & DT & HP & OTP
+    SG --> EFF
+    LAB -->|sync on SET_TASKS| F
+    WL -->|post to JIRA| A2
 ```
 
-**Chú thích luồng dữ liệu (v3.0):**
+**Chú thích luồng dữ liệu (v1.2.0):**
 
-1. **Input (3 nguồn) → Parse:**
-   - **CSV:** Người dùng kéo-thả file CSV → `UploadZone.jsx` (hiện tích hợp trong `JiraConnect.jsx`) đọc file qua `FileReader` → `csvParser.js` parse text → `Column Discovery` xác định vị trí từng cột → map thành mảng `Task` objects.
-   - **JIRA API:** `JiraConnect.jsx` → `testJiraConnection()` (Basic Auth: email + API Token) → `fetchJiraIssues()` gọi `/rest/api/latest/search?jql=...` → `parseJiraIssue()` map response thành `Task[]`. Sử dụng Vite proxy (`/api/jira`) trong dev mode để bypass CORS; production gọi trực tiếp đến JIRA server.
-   - **Bookmarklet:** Người dùng click bookmark trên tab JIRA → bookmarklet fetch dữ liệu (same-origin, auto-auth) → mở dashboard tab với `#jira-data=<base64>` → `App.jsx` đọc hash trên mount và qua `hashchange` event → giải mã base64 → dispatch `SET_TASKS`.
-2. **Parse → State:** `tasks[]` được dispatch vào `AppContext` qua action `SET_TASKS` (useReducer). State lưu thêm `dataSource` ('csv'|'jira'|'jira-bookmarklet'), `jqlUsed`, `jiraConfig`, `lastRefreshTime`.
-3. **State → Render:** `Dashboard.jsx` gọi `getFilteredTasks()` (useCallback) để lấy tasks đã lọc. Kết quả truyền xuống các component con qua props.
-4. **User Interaction → State update:** `FilterBar` dispatch `SET_FILTERS` → state thay đổi → re-render. `OTPanel` dispatch `SET_OT_LEAVE` với `{ otTotal, leaveTotal }` → `EffortCard` tính lại effort (công thức ratio). `Sidebar` dispatch layout actions (`SET_SIDEBAR_COLLAPSED`, `SET_ACTIVE_SECTION`, `SET_OT_PANEL_OPEN`).
-5. **Persistence:** Theme (`jira-dash-theme`), OT/leave (`jira-dash-ot-leave`), JIRA config (`jira-dash-config`) được đọc từ localStorage trong `AppProvider` initializer và ghi lại qua `useEffect`.
+1. **Input (2 nguồn):**
+   - **JIRA API (Basic Auth):** `JiraConnect.jsx` → `testJiraConnection()` → `fetchJiraIssues()` gọi `/rest/api/latest/search?jql=...` → `parseJiraIssue()` map response thành `Task[]`. Sử dụng Vite proxy (`/api/jira`) trong dev mode để bypass CORS; production gọi trực tiếp đến JIRA server.
+   - **History Snapshots:** Người dùng restore snapshot từ `HistoryPanelInline.jsx` → `historyUtils.js` đọc từ localStorage → dispatch `SET_TASKS`.
+2. **Wizard Flow:** Kết nối JIRA → Chọn Project (grid card) → Cấu hình Query (JQL + Assignee) → Tự động fetch issues, dispatch `SET_TASKS`, navigate đến Dashboard.
+3. **Parse → State:** `tasks[]` được dispatch vào `AppContext` qua action `SET_TASKS` (useReducer). labelUtils tự động đồng bộ nhãn và chạy auto-rules. State lưu `dataSource` ('csv'|'jira'|'history'), `jqlUsed`, `jiraConfig`, `lastRefreshTime`.
+4. **State → Render:** `Dashboard.jsx` sử dụng `useParams()` từ react-router-dom để xác định tab hiện tại. `FilterBar` dispatch `SET_FILTERS` → state thay đổi → re-render.
+5. **User Interaction → State update:** `OTPanelInline` dispatch `SET_OT_LEAVE`. `HistoryPanelInline` dispatch snapshot actions. `Sidebar` dispatch layout actions + navigate.
+6. **Persistence:** Theme, OT/leave, JIRA config, labels, history, password hash được lưu trong localStorage.
 
 ---
 
@@ -229,54 +257,89 @@ jira-dashboard-react/
 ├── index.html                    # Entry HTML (thẻ <div id="root">)
 ├── package.json                  # Dependencies, scripts
 ├── vite.config.js                # Vite config: base './', React + Tailwind plugins
+├── Dockerfile                    # Docker build
+├── nginx.conf                    # Nginx config for Docker
+├── k8s/                          # Kubernetes deployment manifests
+│
+├── electron/
+│   ├── main.js                   # Main process Electron (IPC, SSO, cookie)
+│   ├── preload.js                # Preload script (contextBridge API)
+│   └── package.json              # Electron dependencies
 │
 ├── src/
-│   ├── main.jsx                  # Entry point: createRoot, StrictMode
-│   ├── App.jsx                   # Root component: AppProvider → AppContent
+│   ├── main.jsx                  # Entry point: BrowserRouter + createRoot
+│   ├── App.jsx                   # Root component: Routes (react-router-dom), login gate
 │   ├── index.css                 # Tailwind import, CSS custom properties
 │   │
 │   ├── context/
-│   │   └── AppContext.jsx        # Context API + useReducer: state, dispatch, actions
+│   │   └── AppContext.jsx        # Context API + useReducer: 30+ state fields, 15+ actions
 │   │
-    │   ├── components/
-    │   │   ├── layout/
-    │   │   │   ├── AppShell.jsx      # App layout shell: TopBar + Sidebar + main content
-    │   │   │   ├── Sidebar.jsx       # Sidebar navigation: Tổng quan, Dữ liệu, OT, Kết nối JIRA
-    │   │   │   └── TopBar.jsx        # Fixed top bar: breadcrumb, connection badge, theme toggle
-    │   │   ├── JiraConnect.jsx       # JIRA connection panel: API token OR Bookmarklet setup
-    │   │   ├── Dashboard.jsx         # Main dashboard: data source info, auto-refresh, overview
-    │   │   ├── FilterBar.jsx         # Sprint, Component, Assignee, Date range filters (pill-style)
-    │   │   ├── StatsGrid.jsx         # 4 stat cards + EffortCard, stagger animation
-    │   │   ├── EffortCard.jsx        # Effort ratio with gauge bar + status label
-    │   │   ├── ChartGrid.jsx         # Grid container for 5 chart components
-    │   │   ├── GanttChart.jsx        # Gantt timeline: HTML table, tooltip, legend
-    │   │   ├── DataTable.jsx         # Sortable, searchable, paginated data table
-    │   │   ├── OTPanel.jsx           # OT / Leave panel (slide drawer, quick-add buttons)
-    │   │   │
-    │   │   └── charts/
-    │   │       ├── SprintBarChart.jsx        # Chargrouped bar: hours by sprint
-    │   │       ├── ComponentBarChart.jsx     # Horizontal bar: hours by component
-    │   │       ├── DailyTrendChart.jsx       # Bar + Line combo: daily + cumulative
-    │   │       ├── TypeDoughnutChart.jsx     # Doughnut: hours by issue type
-    │   │       └── AssigneeBarChart.jsx      # Horizontal bar: hours by assignee (full-width)
-    │   │
-    │   └── utils/
-│       ├── csvParser.js          # parseCSV(): 2-pass, BOM, semicolon, quoted fields
+│   ├── i18n/
+│   │   ├── index.jsx             # useI18n() hook + provider
+│   │   ├── en.js                 # English translations
+│   │   └── vi.js                 # Vietnamese translations
+│   │
+│   ├── components/
+│   │   ├── layout/
+│   │   │   ├── AppShell.jsx      # App layout shell: TopBar + Sidebar + main content
+│   │   │   ├── Sidebar.jsx       # Dashboard (submenu) + Weekly Planner (submenu)
+│   │   │   └── TopBar.jsx        # Fixed top bar: connection badge, theme toggle, lang switch
+│   │   │
+│   │   ├── LoginScreen.jsx       # Password login (SHA-256), 2-column dark/light
+│   │   ├── JiraConnect.jsx       # JIRA API connection: URL, API Token, Project Key
+│   │   ├── ProjectSelector.jsx   # Grid card project picker with search
+│   │   ├── QueryConfig.jsx       # JQL input + assignee filter config
+│   │   ├── StepIndicator.jsx     # Wizard step progress indicator
+│   │   ├── Dashboard.jsx         # Main dashboard: 7-tab routing, auto-refresh, overdue warning
+│   │   ├── DashboardTabs.jsx     # Tab bar: overview/charts/data/gantt/compare/ot/history
+│   │   ├── FilterBar.jsx         # Sprint, Component, Assignee, Date range filters (pill-style)
+│   │   ├── StatsGrid.jsx         # 4 stat cards + EffortCard, stagger animation
+│   │   ├── EffortCard.jsx        # Effort ratio with gauge bar + status label
+│   │   ├── ChartGrid.jsx         # Grid container for chart sub-tabs
+│   │   ├── GanttChart.jsx        # Gantt timeline: HTML table, tooltip, legend
+│   │   ├── DataTable.jsx         # Sortable, searchable, paginated data table (8 columns)
+│   │   ├── OTPanelInline.jsx     # OT / Leave inline panel (quick-add buttons)
+│   │   ├── HistoryPanelInline.jsx# Snapshots save/load/compare (inline)
+│   │   ├── MonthComparison.jsx   # Month-over-month data comparison
+│   │   ├── CompareView.jsx       # Side-by-side snapshot delta comparison
+│   │   ├── AutoReport.jsx        # Auto-generated report view
+│   │   ├── WeeklyPlanner.jsx     # Weekly calendar work planner, log worklog
+│   │   ├── CreateTaskView.jsx    # Create JIRA task form
+│   │   ├── CreateTaskPanel.jsx   # Embedded task creation panel
+│   │   ├── TaskDetail.jsx        # Task detail with label badges/dropdown
+│   │   ├── LabelBadge.jsx        # Label badge component
+│   │   ├── LabelDropdown.jsx     # Label assignment dropdown
+│   │   │
+│   │   └── charts/
+│   │       ├── SprintBarChart.jsx        # Grouped bar: hours by sprint
+│   │       ├── ComponentBarChart.jsx     # Horizontal bar: hours by component
+│   │       ├── DailyTrendChart.jsx       # Bar + Line combo: daily + cumulative
+│   │       ├── TypeDoughnutChart.jsx     # Doughnut: hours by issue type
+│   │       ├── AssigneeBarChart.jsx      # Horizontal bar: hours by assignee (full-width)
+│   │       └── BurndownChart.jsx         # Burndown timeline chart
+│   │
+│   └── utils/
+│       ├── authUtils.js          # SHA-256 hashing, password validation, lockout logic
 │       ├── dateUtils.js          # parseJiraDate, countWorkingDays, fmtShortDate, etc.
 │       ├── effortCalculator.js   # calculateEffort(): formula with OT/leave
-│       └── exportUtils.js        # exportCSV, exportChartPNG, COMP_COLORS, CHART_PALETTE
+│       ├── exportUtils.js        # exportCSV, exportChartPNG, COMP_COLORS, CHART_PALETTE
+│       ├── jiraApi.js            # fetchJiraIssues, testJiraConnection, parseJiraIssue
+│       ├── jiraWorklog.js        # logWorklog() — post worklog entries to JIRA
+│       ├── labelUtils.js         # createLabelDef, syncTaskLabels, runAutoRules
+│       └── historyUtils.js       # saveSnapshot, loadSnapshot, getSnapshotList
 │
-└── dist/                         # Production build output (npm run build)
-    └── index.html                # Entry HTML với paths relative (base: './')
+├── public/                       # Static assets
+├── dist/                         # Production build output (npm run build)
+└── release/                      # Electron release output
 ```
 
-**Thống kê:** 28+ source files (không tính node_modules/ và dist/), 18+ React components (gồm 3 layout components + JiraConnect), 5 utility modules (thêm jiraApi.js) + 1 Context module.
+**Thống kê:** ~35+ source files, 28+ React components, 8 utility modules, 3 i18n files, 1 Context module.
 
 ---
 
 ## 4. Chi tiết công nghệ
 
-### 4.1 React 18
+### 4.1 React 19
 
 **Vị trí:** Toàn bộ ứng dụng — `src/main.jsx`, `src/App.jsx`, tất cả components trong `src/components/`.
 
@@ -284,21 +347,22 @@ jira-dashboard-react/
 
 - **Functional components:** 100% functional components, không có class components.
 - **Hooks được sử dụng:**
-  - `useState` — local state trong `UploadZone.jsx` (dragOver, fileName), `OTPanel.jsx` (isOpen, otDate, leaveHours), `GanttChart.jsx` (showTooltip).
-  - `useEffect` — trong `AppContext.jsx`: đồng bộ dark mode class vào `<html>`, persist OT/leave data vào localStorage.
+  - `useState` — local state trong `OTPanelInline.jsx` (otHours, leaveHours), `GanttChart.jsx` (showTooltip), `WeeklyPlanner.jsx` (selectedDate, tasks), `CreateTaskView.jsx` (form fields).
+  - `useEffect` — trong `AppContext.jsx`: đồng bộ dark mode class vào `<html>`, persist OT/leave/label data vào localStorage. Trong `Dashboard.jsx`: auto-refresh interval. Trong `App.jsx`: wizard initialization.
   - `useMemo` — trong `StatsGrid.jsx` (tính stats), `DataTable.jsx` (lọc + sắp xếp + tìm kiếm), tất cả chart components (tính chart data), `FilterBar.jsx` (danh sách unique values), `GanttChart.jsx` (tính timeline), `EffortCard.jsx` (tính effort).
-  - `useCallback` — trong `AppContext.jsx` (`getFilteredTasks`), `DataTable.jsx` (handleSort, handleSearch, goToPage), `UploadZone.jsx` (processFile, handleDrop).
-  - `useReducer` — trong `AppContext.jsx` (reducer với 10+ action types).
+  - `useCallback` — trong `AppContext.jsx` (`getFilteredTasks`), `DataTable.jsx` (handleSort, handleSearch, goToPage), `Dashboard.jsx` (handleTabChange, handleManualRefresh).
+  - `useReducer` — trong `AppContext.jsx` (reducer với 15+ action types).
   - `useContext` — trong `useApp()` custom hook (tất cả components cần state).
-  - `useRef` — trong `UploadZone.jsx` (input file ref).
+  - `useRef` — trong `Dashboard.jsx` (intervalRef, jiraConfigRef), `App.jsx` (wizardInitRef).
+  - `useNavigate`, `useParams`, `useSearchParams`, `useLocation` — từ react-router-dom.
 
 - **StrictMode:** `src/main.jsx` bao toàn bộ app trong `<StrictMode>` để phát hiện side effects không an toàn.
 
-- **Custom Hook:** `useApp()` trong `AppContext.jsx` — wrapper cho `useContext(AppContext)`, throw error nếu dùng ngoài Provider.
+- **Custom Hooks:** `useApp()` trong `AppContext.jsx` — wrapper cho `useContext(AppContext)`, throw error nếu dùng ngoài Provider. `useI18n()` trong `i18n/index.jsx` — hook đa ngôn ngữ.
 
 ### 4.2 Vite
 
-**Vị trí:** `C:\Users\Admin\Downloads\JIRA\jira-dashboard-react\vite.config.js`
+**Vị trí:** `E:\JIRA\jira-dashboard-react\vite.config.js`
 
 ```javascript
 import { defineConfig } from 'vite'
@@ -424,12 +488,13 @@ npm run preview   # Preview production build locally
 
 **Đặc điểm triển khai:**
 
-- **5 chart types:**
+- **6 chart types:**
   1. `SprintBarChart.jsx` — **Bar (nhóm):** 2 dataset (Giờ đã log + Giờ ước tính) song song. Sắp xếp sprint theo số.
   2. `ComponentBarChart.jsx` — **Bar (ngang):** Màu sắc theo component dùng `getComponentColor()`. Index axis.
   3. `DailyTrendChart.jsx` — **Bar + Line combo:** Bar dataset (Giờ theo ngày) + Line dataset (Lũy kế) với fill + tension (0.3) loại bỏ.
   4. `TypeDoughnutChart.jsx` — **Doughnut:** Cutout 55%. Legend bottom. Tooltip hiển thị giờ + %.
   5. `AssigneeBarChart.jsx` — **Bar (ngang) full-width:** Col-span 2 trên desktop. Màu từ `CHART_PALETTE`.
+  6. `BurndownChart.jsx` — **Line chart:** Burndown timeline tracking progress over time.
 
 - **Chart.js registration:** Mỗi chart component tự đăng ký các thành phần cần thiết (`ChartJS.register(...)`). Các module đã đăng ký: `CategoryScale`, `LinearScale`, `BarElement`, `LineElement`, `PointElement`, `ArcElement`, `Title`, `Tooltip`, `Legend`, `Filler`.
 
@@ -631,38 +696,20 @@ Effort = availableHr / totalHr       (ratio, không nhân 100)
 - Màu: `--success` (xanh) nếu < 1, `--warning` (vàng) nếu ≈ 1, `--danger` (đỏ) nếu > 1
 - Cảnh báo đỏ: "Effort > 1 — kiểm tra lại xem đã log đủ task chưa"
 
-### 5.4 Bookmarklet Cross-Origin Data Transfer
+### 5.4 Authentication & Login
 
-**Vị trí:** `src/components/JiraConnect.jsx` (UI + code generation), `src/App.jsx` (URL hash reader)
+**Vị trí:** `src/utils/authUtils.js`, `src/components/LoginScreen.jsx`
 
-**Cơ chế:** Dành cho người dùng không có quyền API JIRA. Bookmarklet chạy trên trang JIRA (cùng origin → tự động xác thực qua session cookie), fetch dữ liệu qua XMLHttpRequest, chuyển đến dashboard qua URL hash.
+**Cơ chế:** Bảo vệ ứng dụng bằng màn hình đăng nhập với mật khẩu (SHA-256 hash). Hỗ trợ dark/light mode ngay trên màn hình đăng nhập với thiết kế 2 cột.
 
-**Luồng hoạt động:**
+**Đặc điểm triển khai:**
 
-1. **Tạo Bookmarklet:** Người dùng nhập project key + JQL (tùy chọn) → ứng dụng sinh ra đoạn code `javascript:(function(){...})()`.
-2. **Copy & Lưu:** Người dùng copy code → tạo bookmark mới trên trình duyệt, paste vào ô URL.
-3. **Kích hoạt:** Người dùng mở trang JIRA (đã đăng nhập) → click bookmark.
-4. **Fetch:** Bookmarklet gửi `XMLHttpRequest` đến `/rest/api/latest/search?jql=...&maxResults=500` trên cùng origin JIRA → tự động gửi session cookie.
-5. **Parse:** Xử lý sprint data từ nhiều custom field IDs (`customfield_10020`, `10010`, `10007`, `10002`, `10021`, `10100`) → parse string format bằng regex `/name=([^,]+)/`.
-6. **Transfer (Cross-Origin):** Bookmarklet mã hóa dữ liệu dạng JSON → `btoa(encodeURIComponent(JSON.stringify(data)))` → mở tab dashboard với `#jira-data=<base64>` trong URL.
-7. **Nhận:** `App.jsx` `useEffect` lắng nghe `hashchange` event và đọc `window.location.hash` trên mount → giải mã `atob(decodeURIComponent(hash))` → dispatch `SET_TASKS`.
-
-**Xử lý URL hash trong App.jsx:**
-
-```javascript
-// Đọc URL hash trên mount
-const hash = window.location.hash;
-if (hash.startsWith('#jira-data=')) {
-  const encoded = hash.replace('#jira-data=', '');
-  const json = decodeURIComponent(escape(atob(encoded)));
-  const data = JSON.parse(json);
-  // → dispatch SET_TASKS
-}
-// Lắng nghe hashchange (bookmarklet cập nhật tab hiện tại)
-window.addEventListener('hashchange', readHash);
-```
-
-**Ưu điểm:** Không cần API token, không cần quyền admin, dùng cookie đăng nhập sẵn có. Không gửi dữ liệu qua server trung gian — end-to-end trên client.
+- **Password hash:** Sử dụng Web Crypto API (SubtleCrypto) để tạo SHA-256 hash.
+- **Lockout:** Sau 5 lần nhập sai, tài khoản bị khóa trong 30 phút.
+- **Mật khẩu mặc định:** `123456aA@`
+- **Giao diện login:** 2 cột: trái là form đăng nhập, phải là giới thiệu tính năng. Có nút chuyển Dark/Light mode.
+- **ProtectedRoute:** Component wrapper kiểm tra `isPasswordSet()` trước khi render children. Nếu chưa đặt mật khẩu → redirect `/login`.
+- **Lưu trữ:** `localStorage` key `jira-dash-password` chứa SHA-256 hash của mật khẩu hiện tại.
 
 ### 5.5 Filter Logic
 
@@ -912,6 +959,6 @@ function reducer(state, action) {
 
 ---
 
-*Hết tài liệu Kiến trúc & Công nghệ — JIRA Time Tracking Dashboard v3.0*
+*Hết tài liệu Kiến trúc & Công nghệ — JIRA Time Tracking Dashboard v1.2.0*
 
 *Tham khảo thêm: `SRS-JIRA-Dashboard.md` — Đặc tả yêu cầu phần mềm đầy đủ.*

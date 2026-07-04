@@ -29,13 +29,13 @@ const initialState = {
   autoRules: [],
   // History Manager state
   historyPanelOpen: false,
-  // Bookmarklet Panel state
-  bookmarkletPanelOpen: false,
+
   // JIRA connection state
   jiraConfig: { url: '', token: '', projectKey: '', assignee: '', jql: '' },
   jiraConnected: false,
-  dataSource: '', // '' | 'csv' | 'jira' | 'jira-bookmarklet'
+  dataSource: '', // '' | 'csv' | 'jira'
   jiraAutoRefresh: 'off', // 'off' | '5' | '15' | '30' | '60'
+  globalAutoRefresh: 'off', // 'off' | '5' | '15' | '30' | '60'
   lastRefreshTime: null,
   jqlUsed: '',
   // Electron environment
@@ -98,8 +98,6 @@ function reducer(state, action) {
       };
     case 'SET_ERROR':
       return { ...state, error: action.payload, loading: false };
-    case 'SET_TABLE_VISIBLE':
-      return { ...state, tableVisible: action.payload };
     case 'SET_TABLE_SORT':
       return { ...state, tableSortCol: action.payload.col, tableSortDir: action.payload.dir };
     case 'SET_TABLE_PAGE':
@@ -111,12 +109,8 @@ function reducer(state, action) {
     // Layout actions
     case 'SET_SIDEBAR_COLLAPSED':
       return { ...state, sidebarCollapsed: action.payload };
-    case 'SET_ACTIVE_SECTION':
-      return { ...state, activeSection: action.payload };
     case 'SET_MOBILE_OPEN':
       return { ...state, mobileOpen: action.payload };
-    case 'SET_OT_PANEL_OPEN':
-      return { ...state, otPanelOpen: action.payload };
     // JIRA connection actions
     case 'SET_JIRA_CONFIG':
       return { ...state, jiraConfig: action.payload };
@@ -124,12 +118,10 @@ function reducer(state, action) {
       return { ...state, jiraConnected: action.payload };
     case 'SET_SELECTED_PROJECT':
       return { ...state, selectedProject: action.payload };
-    case 'SET_LOADED':
-      return { ...state, isLoaded: action.payload };
     case 'SET_DATA_SOURCE':
       return { ...state, dataSource: action.payload };
-    case 'SET_JIRA_AUTO_REFRESH':
-      return { ...state, jiraAutoRefresh: action.payload };
+    case 'SET_GLOBAL_AUTO_REFRESH':
+      return { ...state, globalAutoRefresh: action.payload };
     case 'SET_LAST_REFRESH_TIME':
       return { ...state, lastRefreshTime: action.payload };
     case 'SET_JQL_USED':
@@ -157,43 +149,6 @@ function reducer(state, action) {
       };
     }
     // === Label Manager cases ===
-    case 'ADD_LABEL': {
-      const { id, name, color } = action.payload;
-      return {
-        ...state,
-        labelDefs: { ...state.labelDefs, [id]: { id, name, color } },
-      };
-    }
-    case 'UPDATE_LABEL': {
-      const { id, data } = action.payload;
-      return {
-        ...state,
-        labelDefs: {
-          ...state.labelDefs,
-          [id]: { id, ...state.labelDefs[id], ...data },
-        },
-      };
-    }
-    case 'DELETE_LABEL': {
-      const { id } = action.payload;
-      const { [id]: removed, ...restDefs } = state.labelDefs;
-      // Also remove the label from all task assignments
-      const newAssignments = {};
-      for (const [key, ids] of Object.entries(state.labelAssignments)) {
-        const filtered = ids.filter(lid => lid !== id);
-        if (filtered.length > 0) newAssignments[key] = filtered;
-      }
-      // Also remove the label from auto-rules
-      const newRules = (state.autoRules || []).filter(r => r.label !== id);
-      return {
-        ...state,
-        labelDefs: restDefs,
-        labelAssignments: newAssignments,
-        autoRules: newRules,
-      };
-    }
-    case 'SET_AUTO_RULES':
-      return { ...state, autoRules: action.payload };
     case 'ASSIGN_LABEL': {
       const { taskKey, labelId } = action.payload;
       const current = state.labelAssignments[taskKey] || [];
@@ -265,22 +220,7 @@ function reducer(state, action) {
         ),
       };
     }
-    case 'RUN_AUTO_RULES': {
-      const autoAssignments = runAutoRules(state.autoRules || [], state.allTasks);
-      // Merge auto-rule results, preserving manual assignments
-      const merged = { ...state.labelAssignments };
-      for (const [key, ids] of autoAssignments) {
-        const existing = merged[key] || [];
-        const combined = [...new Set([...existing, ...ids])];
-        merged[key] = combined;
-      }
-      return { ...state, labelAssignments: merged };
-    }
     // === History Manager cases ===
-    case 'SET_HISTORY_PANEL_OPEN':
-      return { ...state, historyPanelOpen: action.payload };
-    case 'SET_BOOKMARKLET_PANEL_OPEN':
-      return { ...state, bookmarkletPanelOpen: action.payload };
     case 'RESTORE_SNAPSHOT': {
       const { tasks, name, fileName, otLeaveData, labelDefs, labelAssignments } = action.payload;
       return {
@@ -302,8 +242,6 @@ function reducer(state, action) {
     }
     case 'SET_DASHBOARD_TAB':
       return { ...state, dashboardTab: action.payload };
-    case 'SET_COMPARE_SNAPSHOTS':
-      return { ...state, compareSnapshots: action.payload };
     case 'SET_WIZARD_JIRA_CONFIG':
       return { ...state, wizardJiraConfig: action.payload };
     case 'SET_WIZARD_PROJECT':

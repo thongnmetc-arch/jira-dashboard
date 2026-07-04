@@ -6,11 +6,6 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
-  Calendar,
-  User,
-  Tag,
-  FileText,
-  Clock,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useI18n } from '../i18n';

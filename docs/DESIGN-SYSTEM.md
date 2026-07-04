@@ -84,3 +84,4 @@
 
 ## Changelog
 - 2026-07-02: Added routing (react-router-dom), 8 dashboard tabs, removed HTML import, global Cancelled filter, dual Effort display, i18n EN/VN, wizard screens redesign
+- 2026-07-04: Added LoginScreen pattern, WeeklyPlanner, CreateTaskView, StepIndicator, ProjectSelector, QueryConfig, OTPanelInline, HistoryPanelInline, DashboardTabs (7 tabs), global auto-refresh, ProtectedRoute auth guard

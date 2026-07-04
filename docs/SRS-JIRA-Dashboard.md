@@ -5,10 +5,10 @@
 | Trường           | Nội dung                                                     |
 |------------------|---------------------------------------------------------------|
 | **Dự án**        | JIRA Time Tracking Dashboard                                  |
-| **Phiên bản**    | 4.0                                                           |
-| **Ngày**         | 02/07/2026                                                    |
+| **Phiên bản**    | v1.2.0                                                        |
+| **Ngày**         | 04/07/2026                                                    |
 | **Tác giả**      | AI Studio Agent                                               |
-| **Trạng thái**   | Dự thảo                                                       |
+| **Trạng thái**   | Đã phát hành                                                   |
 
 ---
 
@@ -40,6 +40,12 @@
   - [FR-11: Quản lý OT & Nghỉ phép](#fr-11-quản-lý-ot--nghỉ-phép)
   - [FR-12: Gán nhãn tùy chỉnh](#fr-12-gán-nhãn-tùy-chỉnh)
   - [FR-13: Chế độ Dark/Light Theme](#fr-13-chế-độ-darklight-theme)
+  - [FR-14: Màn hình đăng nhập](#fr-14-màn-hình-đăng-nhập)
+  - [FR-15: Flow Wizard](#fr-15-flow-wizard)
+  - [FR-16: Weekly Planner](#fr-16-weekly-planner)
+  - [FR-17: Create Task](#fr-17-create-task)
+  - [FR-18: Dashboard Tabs](#fr-18-dashboard-tabs)
+  - [FR-19: Global Auto-refresh](#fr-19-global-auto-refresh)
 - [4. Yêu cầu phi chức năng](#4-yêu-cầu-phi-chức-năng)
   - [4.1 Hiệu năng](#41-hiệu-năng)
   - [4.2 Khả năng sử dụng](#42-khả-năng-sử-dụng)
@@ -61,7 +67,7 @@
 
 ### 1.1 Mục đích
 
-Tài liệu này đặc tả các yêu cầu phần mềm cho hệ thống **JIRA Time Tracking Dashboard** — một ứng dụng web đơn trang (SPA) sử dụng **React 18** cho phép người dùng nhập dữ liệu xuất từ JIRA (dạng CSV), trực quan hóa số liệu thời gian làm việc qua các biểu đồ và bảng thống kê, đồng thời hỗ trợ tính toán mức độ hoàn thành công việc (effort), quản lý tăng ca (OT) và nghỉ phép, xuất báo cáo, và so sánh dữ liệu theo thời gian.
+Tài liệu này đặc tả các yêu cầu phần mềm cho hệ thống **JIRA Time Tracking Dashboard** — một ứng dụng web đơn trang (SPA) sử dụng **React 19 + react-router-dom** cho phép người dùng kết nối đến JIRA qua REST API, trực quan hóa số liệu thời gian làm việc qua các biểu đồ và bảng thống kê, đồng thời hỗ trợ tính toán mức độ hoàn thành công việc (effort), quản lý tăng ca (OT) và nghỉ phép, xuất báo cáo, và so sánh dữ liệu theo thời gian.
 
 ### 1.2 Phạm vi dự án
 
@@ -69,9 +75,10 @@ Hệ thống hoạt động hoàn toàn trên trình duyệt web (client-side), 
 
 - **Phase 1 (Đã hoàn thành):** Nhập file CSV JIRA, dashboard thống kê, 5 biểu đồ Chart.js, biểu đồ Gantt HTML/CSS.
 - **Phase 2 (Đã hoàn thành):** Bộ lọc dữ liệu tương tác, bảng dữ liệu chi tiết có phân trang/sắp xếp/tìm kiếm, xuất báo cáo (CSV/PNG), tính toán effort theo công thức ratio mới, quản lý OT và nghỉ phép đơn giản hóa (không chọn ngày — chỉ nhập tổng số giờ + quick-add buttons).
-- **Phase 3 (Đã hoàn thành — merged vào Phase 2):** Lưu và so sánh lịch sử phân tích, tích hợp JIRA API (API Token + Bookmarklet), gán nhãn tùy chỉnh cho công việc. Tất cả tính năng Phase 3 đã được tích hợp và hoàn thiện.
+- **Phase 3 (Đã hoàn thành):** Lưu và so sánh lịch sử phân tích, tích hợp JIRA API (API Token), gán nhãn tùy chỉnh cho công việc. Tất cả tính năng Phase 3 đã được tích hợp và hoàn thiện.
 - **Phase 4 (Đã hoàn thành):** Chuyển đổi kiến trúc từ single HTML file sang **React 19 SPA với Vite, Tailwind CSS, Framer Motion**. Bao gồm 28+ source file, 18+ components (layout/: AppShell, Sidebar, TopBar), Context API state management, dark/light theme, sidebar navigation, sticky layout, data source indicator, floating back-to-top button, overdue warning banner.
-- **Phase 5 (Đã hoàn thành):** Bổ sung routing với **react-router-dom** với 8 tab dashboard (Overview, Charts, Data, Gantt, Compare, OT, Labels, History). Hỗ trợ đa ngôn ngữ (Tiếng Việt/Tiếng Anh) qua i18n. Triển khai Docker + Kubernetes (Dockerfile, docker-compose.yml, k8s/). Lọc toàn cục task Cancelled. Cải tiến hiển thị Effort (dual mode). Thiết kế lại màn hình wizard. Xoá dependency HTML import.
+- **Phase 5 (Đã hoàn thành):** Bổ sung routing với **react-router-dom** với 7 tab dashboard (Overview, Charts, Data, Gantt, Compare, OT, History). Hỗ trợ đa ngôn ngữ (Tiếng Việt/Tiếng Anh) qua i18n. Triển khai Docker + Kubernetes (Dockerfile, docker-compose.yml, k8s/). Lọc toàn cục task Cancelled. Cải tiến hiển thị Effort (dual mode). Thiết kế lại màn hình wizard + login. Xoá dependency HTML import và Bookmarklet.
+- **Phase 6 (Đã hoàn thành — v1.2.0):** Màn hình đăng nhập bảo vệ app (SHA-256, khóa 5 lần sai, 2 cột dark/light). Flow Wizard 5 bước (Login → Connect → Select Project → Query Config → Dashboard). Weekly Planner với log worklog lên JIRA. Create Task View. Dashboard phân tab với 7 tab. Project Selector dạng grid card. Nút đổi dự án từ Dashboard. Font Consolas toàn bộ ứng dụng. Sidebar phân cấp dashboard cha-con.
 
 **Ngoài phạm vi:** Tích hợp với các hệ thống quản lý dự án khác ngoài JIRA, xác thực người dùng đa cấp, triển khai đa người dùng dùng chung dữ liệu qua mạng.
 
@@ -115,16 +122,17 @@ Hệ thống hoạt động hoàn toàn trên trình duyệt web (client-side), 
 
 | Tài liệu                                                        | Mô tả                                            |
 |-----------------------------------------------------------------|--------------------------------------------------|
-| `jira-dashboard-react/` (thư mục dự án hiện tại)                | Mã nguồn React SPA (24 source files, 15+ components) |
+| `jira-dashboard-react/` (thư mục dự án hiện tại)                | Mã nguồn React SPA (35+ source files, 28+ components) |
 | Chart.js Documentation v4 (https://www.chartjs.org/docs/latest/)| Thư viện biểu đồ sử dụng trong dự án              |
 | IEEE Std 830-1998 — Recommended Practice for SRS               | Chuẩn cấu trúc tài liệu đặc tả yêu cầu            |
 | JIRA Cloud REST API v3 (Atlassian)                              | API tích hợp tùy chọn để lấy dữ liệu trực tiếp     |
-| React 18 Documentation (https://react.dev/)                     | Thư viện UI framework                             |
+| React 19 Documentation (https://react.dev/)                     | Thư viện UI framework                             |
 | Vite Documentation (https://vite.dev/)                          | Build tool và dev server                          |
 | Tailwind CSS v4 (https://tailwindcss.com/)                      | Framework CSS utility-first                       |
 | Framer Motion (https://www.framer.com/motion/)                  | Thư viện animation cho React                      |
 | react-chartjs-2 (https://react-chartjs-2.js.org/)               | React wrapper cho Chart.js                        |
 | Lucide React (https://lucide.dev/)                              | Bộ icon cho React                                 |
+| react-router-dom v6 (https://reactrouter.com/)                  | Client-side routing cho React                     |
 
 ---
 
@@ -132,115 +140,122 @@ Hệ thống hoạt động hoàn toàn trên trình duyệt web (client-side), 
 
 ### 2.1 Góc nhìn sản phẩm
 
-**JIRA Time Tracking Dashboard** là một ứng dụng web đơn trang (Single-Page Application — SPA) xây dựng với **React 19 + Vite**, chạy hoàn toàn trên trình duyệt. Sản phẩm cho phép:
+**JIRA Time Tracking Dashboard** là một ứng dụng web đơn trang (Single-Page Application — SPA) xây dựng với **React 19 + Vite + react-router-dom**, chạy hoàn toàn trên trình duyệt. Sản phẩm cho phép:
 
-1. Người dùng kết nối đến JIRA qua **2 phương thức**: API Token (Basic Auth) hoặc **Bookmarklet** (cho người dùng không có quyền API — chạy trên trang JIRA, tự động xác thực, truyền dữ liệu qua URL hash).
-2. Nhập dữ liệu từ file CSV xuất từ JIRA (drag-and-drop) với 2-pass parser xử lý BOM, semicolon, quoted fields.
-3. Dashboard tự động phân tích dữ liệu, hiển thị thống kê tổng quan và 5 biểu đồ trực quan (Chart.js).
-4. Người dùng tương tác với dữ liệu qua bộ lọc (pill-style compact), bảng chi tiết (sortable, searchable, paginated), và biểu đồ Gantt.
-5. Tính toán tỷ lệ effort dưới dạng **ratio** (availableHr / totalHr) với gauge bar màu sắc và cảnh báo nếu effort > 1.
-6. Quản lý OT & nghỉ phép đơn giản hóa — chỉ nhập tổng số giờ (không chọn ngày) với quick-add buttons (OT: +0.5h, +1.5h, +2h, +4h, +8h; Leave: +1.75h, +3.5h, +7h, +14h).
-7. Chuyển đổi giao diện sáng/tối (dark/light theme) với animation mượt mà (0.2s transitions).
-8. Bố cục mới với **sticky TopBar** (cố định phía trên), **Sidebar** (cố định bên trái, collapse/expand được), main content cuộn độc lập.
-9. **Sidebar navigation**: Tổng quan (scroll top), Dữ liệu (scroll đến bảng), OT & Nghỉ phép (mở panel), Kết nối JIRA (reset về màn hình kết nối).
-10. Các UI/UX bổ sung: **data source indicator** (JIRA API / Bookmarklet / File + JQL + task count), **overdue task warning** (đỏ — task chưa đóng), **back to top button** (floating bottom-right), **notification banner** khi OT/Leave được lưu.
+1. Người dùng đăng nhập bằng mật khẩu (SHA-256, khóa sau 5 lần sai) qua màn hình login 2 cột dark/light.
+2. Flow Wizard 5 bước hướng dẫn: Login → Kết nối JIRA (API Token) → Chọn Project (grid card) → Cấu hình Query (JQL) → Dashboard.
+3. Kết nối đến JIRA qua **API Token (Basic Auth)**, tự động fetch dữ liệu issues qua REST API.
+4. Dashboard tự động phân tích dữ liệu, hiển thị thống kê tổng quan và 6 biểu đồ trực quan (Chart.js) với các sub-tab.
+5. Người dùng tương tác với dữ liệu qua bộ lọc (pill-style compact), bảng chi tiết (sortable, searchable, paginated), và biểu đồ Gantt.
+6. Tính toán tỷ lệ effort dưới dạng **ratio** (availableHr / totalHr) với gauge bar màu sắc và cảnh báo nếu effort > 1.
+7. Quản lý OT & nghỉ phép đơn giản hóa — chỉ nhập tổng số giờ (không chọn ngày) với quick-add buttons (OT: +0.5h, +1.5h, +2h, +4h, +8h; Leave: +1.75h, +3.5h, +7h, +14h).
+8. Chuyển đổi giao diện sáng/tối (dark/light theme) với animation mượt mà (0.2s transitions).
+9. **7 tab Dashboard**: Tổng quan, Charts, Dữ liệu, Gantt, So sánh, OT, Lịch sử.
+10. **Weekly Planner**: Lên lịch công việc theo tuần, tự động load tasks từ JIRA, log worklog trực tiếp lên JIRA.
+11. **Create Task**: Tạo task JIRA mới từ ứng dụng.
+12. Gán nhãn thủ công, hàng loạt hoặc tự động qua auto-rule.
+13. Lưu snapshot lịch sử, so sánh delta giữa 2 phiên bản.
+14. Bố cục với **sticky TopBar**, **Sidebar** (collapse/expand, phân cấp Dashboard + Weekly Planner).
+15. Các UI/UX bổ sung: **data source indicator** (JIRA API + JQL + task count), **overdue task warning** (đỏ — task chưa đóng), **back to top button** (floating bottom-right), **notification banner** khi OT/Leave được lưu, **auto-refresh** interval configurable.
 
 **Giá trị cốt lõi:**
 - Không cần cài đặt máy chủ — build thành file tĩnh trong thư mục `dist/`, mở trực tiếp từ ổ cứng hoặc deploy lên web server.
 - Toàn bộ dữ liệu xử lý trên client — không lo rò rỉ dữ liệu qua mạng.
-- Hai phương thức kết nối JIRA linh hoạt: API Token (cho người có quyền) và Bookmarklet (cho mọi người — không cần admin).
+- Kết nối JIRA qua API Token (Basic Auth) với Vite proxy trong dev mode (bypass CORS).
 - Kiến trúc component-based (React) dễ mở rộng, bảo trì.
+- Client-side routing với react-router-dom (8 routes).
 - CSS utility-first (Tailwind) với dark mode tích hợp sẵn.
-- **Vite proxy** cho JIRA API trong dev mode (bypass CORS).
+- Bảo vệ ứng dụng bằng màn hình đăng nhập SHA-256.
+- Hỗ trợ đa ngôn ngữ (Tiếng Việt / English).
 
 ### 2.2 Kiến trúc tổng thể
 
 ```mermaid
 graph TD
-    subgraph "Client (Trình duyệt web — React 19 SPA — v4.0)"
+    subgraph "Client (Trình duyệt web — React 19 SPA — v1.2.0)"
         direction TB
         
         subgraph "AppProvider (Context API + useReducer)"
-            A1["state: allTasks, filters,<br/>otLeaveData, darkMode,<br/>tableSort, pagination,<br/>sidebarCollapsed, activeSection,<br/>jiraConfig, dataSource, jqlUsed"]
+            A1["state: allTasks, filters,<br/>otLeaveData, darkMode,<br/>tableSort, pagination,<br/>sidebarCollapsed, activeSection,<br/>jiraConfig, dataSource, jqlUsed<br/>labelDefs, labelAssignments, autoRules<br/>dashboardTab, wizard*, selectedProject<br/>globalAutoRefresh, compareSnapshots"]
+        end
+        
+        subgraph "Routes (react-router-dom)"
+            R1["/login → LoginScreen"]
+            R2["/connect → JiraConnect"]
+            R3["/projects → ProjectSelector"]
+            R4["/query → QueryConfig"]
+            R5["/dashboard + /dashboard/:tab → Dashboard"]
+            R6["/work-plan/weekly → WeeklyPlanner"]
+            R7["/work-plan/create → CreateTaskView"]
         end
         
         subgraph "Layout Shell"
             AS["AppShell.jsx<br/>TopBar + Sidebar + Main"]
-            TB["TopBar.jsx<br/>Theme toggle (Sun/Moon)<br/>Connection badge<br/>Mobile menu"]
-            SB["Sidebar.jsx<br/>4 nav items<br/>Collapse/expand<br/>Framer Motion"]
+            TB["TopBar.jsx<br/>Theme toggle (Sun/Moon)<br/>Connection badge<br/>Language switcher<br/>Mobile menu"]
+            SB["Sidebar.jsx<br/>Dashboard (7 sub-items)<br/>Weekly Planner (2 sub-items)<br/>Collapse/expand<br/>Framer Motion"]
         end
         
-        subgraph "Connect + Dashboard"
-            JC["JiraConnect.jsx<br/>API Token form<br/>Bookmarklet generator"]
-            D["Dashboard.jsx<br/>Data source info<br/>JQL badge<br/>Overdue warning<br/>Auto-refresh<br/>Back-to-top"]
+        subgraph "Dashboard (7 tab panels)"
+            D["Dashboard.jsx<br/>Data source info<br/>JQL badge<br/>Overdue warning<br/>Auto-refresh (configurable)<br/>Manual refresh<br/>Back-to-top button"]
+            DTABS["DashboardTabs<br/>Overview / Charts / Data<br/>Gantt / Compare / OT / History"]
             
-            subgraph "Dashboard children"
-                FB["FilterBar.jsx<br/>Pill-style compact"]
-                SG["StatsGrid.jsx<br/>5 stat cards + EffortCard"]
-                CG["ChartGrid.jsx<br/>Grid 2 cột"]
-                GT["GanttChart.jsx<br/>HTML table + bars"]
-                DT["DataTable.jsx<br/>Sort, search, paginate"]
-                OP["OTPanel.jsx<br/>Slide drawer<br/>OT / Leave quick-add"]
-            end
-            
-            subgraph "Chart Components"
-                SB["SprintBarChart.jsx<br/>Bar (nhóm)"]
-                CB["ComponentBarChart.jsx<br/>Bar (ngang)"]
-                DTC["DailyTrendChart.jsx<br/>Bar + Line combo"]
-                TDC["TypeDoughnutChart.jsx<br/>Doughnut"]
-                AB["AssigneeBarChart.jsx<br/>Bar (ngang) full-width"]
+            subgraph "Tab Content"
+                OP["Overview: FilterBar + StatsGrid<br/>+ EffortCard + Overdue warning"]
+                CP["Charts: 6 chart sub-tabs<br/>(Sprint/Component/Daily/<br/>Type/Assignee/Burndown)"]
+                DP["Data: DataTable + TaskDetail<br/>+ LabelBadge/LabelDropdown"]
+                GP["Gantt: GanttChart<br/>HTML table timeline + tooltip"]
+                COMP["Compare: MonthComparison<br/>+ AutoReport + CompareView"]
+                OTP["OT: OTPanelInline<br/>Quick-add OT/Leave"]
+                HP["History: HistoryPanelInline<br/>Snapshots save/load/compare"]
             end
         end
         
         subgraph "Utility Modules"
-            CSV["csvParser.js<br/>2-pass parser<br/>BOM, semicolon, quote"]
-            DTU["dateUtils.js<br/>parseJiraDate<br/>countWorkingDays"]
+            AUTH["authUtils.js<br/>SHA-256, lockout"]
+            DTU["dateUtils.js<br/>parseJiraDate, countWorkingDays"]
             EFF["effortCalculator.js<br/>Effort = availableHr / totalHr"]
             EXP["exportUtils.js<br/>exportCSV, exportChartPNG<br/>COMP_COLORS, CHART_PALETTE"]
             JAPI["jiraApi.js<br/>testJiraConnection<br/>fetchJiraIssues<br/>parseJiraIssue"]
+            WL["jiraWorklog.js<br/>logWorklog"]
+            LAB["labelUtils.js<br/>syncTaskLabels, runAutoRules"]
+            HISTU["historyUtils.js<br/>saveSnapshot, loadSnapshot"]
         end
         
-        LS["localStorage<br/>jira-dash-theme<br/>jira-dash-ot-leave<br/>jira-dash-config"]
+        LS["localStorage<br/>jira-dash-theme<br/>jira-dash-ot-leave<br/>jira-dash-config<br/>jira-dash-labels<br/>jira-dash-password<br/>jira-dash-history"]
     end
 
     subgraph "Nguồn dữ liệu đầu vào"
-        FILE[File CSV<br/>xuất từ JIRA]
         JIRA_API["JIRA REST API v3<br/>(Basic Auth)"]
-        BKML["Bookmarklet<br/>URL hash: #jira-data="]
+        HIST_SRC["History Snapshots<br/>localStorage"]
     end
 
-    FILE -->|FileReader| JC
     JIRA_API -->|Vite proxy / direct| JAPI
-    BKML -->|hashchange event| App
-    JAPI -->|SET_TASKS| A1
-    CSV -->|tasks[]| A1
-    App -->|hash reader| A1
+    JAPI -->|dispatch SET_TASKS| A1
+    HIST_SRC -->|dispatch SET_TASKS| A1
     A1 -->|getFilteredTasks| D
-    D --> SG
-    D --> CG --> SB & CB & DTC & TDC & AB
-    D --> GT
-    D --> DT
-    D --> OP
+    D --> DTABS
+    DTABS --> OP & CP & DP & GP & COMP & OTP & HP
     A1 -->|darkMode| TB
     A1 -->|sidebar state| SB
     TB -->|SET_DARK_MODE| A1
     SB -->|layout actions| A1
+    SB -->|navigate| R1 & R2 & R3 & R4 & R5 & R6 & R7
     LS -.->|Persist| A1
+    LAB -->|sync on SET_TASKS| A1
+    WL -->|post to JIRA| JIRA_API
 ```
 
-**Luồng dữ liệu chính (v4.0):**
+**Luồng dữ liệu chính (v1.2.0):**
 
-1. **Ba nguồn dữ liệu đầu vào:**
-   - **CSV**: Người dùng kéo-thả file CSV trong `JiraConnect.jsx` → `FileReader.readAsText(file, 'UTF-8')` → `csvParser.js` parse (2-pass: rows by newline → fields by semicolon, xử lý BOM, quote) → `Column Discovery` xác định vị trí cột → dispatch `SET_TASKS`.
-   - **JIRA API (Basic Auth)**: Nhập URL, email, API Token, Project Key, JQL → `jiraApi.js` (`testJiraConnection` → `fetchJiraIssues`) → gọi `/rest/api/latest/search?jql=...` → `parseJiraIssue()` map response → dispatch `SET_TASKS`. Trong dev mode, request qua Vite proxy (`/api/jira`) để bypass CORS.
-   - **Bookmarklet**: User tạo bookmark trên trình duyệt (code sinh từ `JiraConnect.jsx`) → click bookmark trên tab JIRA (đã đăng nhập) → bookmarklet fetch dữ liệu (same-origin, auto-auth) → mở tab dashboard với `#jira-data=<base64>` → `App.jsx` `useEffect` đọc URL hash trên mount + lắng nghe `hashchange` → giải mã base64 → dispatch `SET_TASKS`.
-2. Dữ liệu được dispatch qua action `SET_TASKS` vào `AppContext` (useReducer), đồng thời lưu `dataSource` (csv/jira/jira-bookmarklet) và `jqlUsed`.
-3. `Dashboard.jsx` sử dụng `getFilteredTasks()` từ context để lấy tasks đã lọc.
-4. Các component con (`StatsGrid`, `ChartGrid`, `GanttChart`, `DataTable`) nhận `filteredTasks` qua props và render.
-5. `FilterBar` dispatch `SET_FILTERS` → toàn bộ component re-render nhờ React reactivity.
-6. `OTPanel` dispatch `SET_OT_LEAVE` với `{ otTotal, leaveTotal }` (dạng số đơn giản, không theo ngày) → `EffortCard` tính lại effort real-time (công thức ratio).
-7. `Sidebar` dispatch layout actions (`SET_SIDEBAR_COLLAPSED`, `SET_ACTIVE_SECTION`, `SET_OT_PANEL_OPEN`).
-8. Dark mode: `TopBar` dispatch `SET_DARK_MODE` → `useEffect` trong `AppProvider` đồng bộ class `.dark` vào `<html>` + lưu localStorage.
+1. **Đăng nhập:** `LoginScreen.jsx` xác thực mật khẩu SHA-256, kiểm tra lockout. `ProtectedRoute` kiểm tra `isPasswordSet()` trước khi render.
+2. **Wizard Flow 5 bước:** Login → `/connect` (JiraConnect: nhập URL + API Token) → `/projects` (ProjectSelector: grid card + search) → `/query` (QueryConfig: JQL + Assignee) → `/dashboard` (tự động fetch issues và render).
+3. **Kết nối JIRA API:** `jiraApi.js` (`testJiraConnection` → `fetchJiraIssues`) → gọi `/rest/api/latest/search?jql=...` → `parseJiraIssue()` map response → dispatch `SET_TASKS`. Trong dev mode, request qua Vite proxy (`/api/jira`) để bypass CORS.
+4. **State:** Dữ liệu được dispatch vào `AppContext` (useReducer). `labelUtils.syncTaskLabels()` và `runAutoRules()` chạy tự động. State lưu `dataSource` ('csv'|'jira'|'history'), `jqlUsed`, `jiraConfig`, `lastRefreshTime`.
+5. **Render:** `Dashboard.jsx` dùng `useParams()` từ react-router-dom để xác định tab hiện tại. `AnimatePresence` chuyển đổi giữa các tab panel.
+6. **User Interaction:** `FilterBar` dispatch `SET_FILTERS` → state thay đổi → re-render. `OTPanelInline` dispatch `SET_OT_LEAVE`. `HistoryPanelInline` dispatch snapshot actions.
+7. **Auto-refresh:** Configurable interval (5/15/30/60 phút) tự động fetch dữ liệu mới từ JIRA API.
+8. **Dark mode & i18n:** `TopBar` dispatch `SET_DARK_MODE` + chuyển đổi ngôn ngữ (VI/EN).
+9. **Weekly Planner:** `/work-plan/weekly` load tasks từ JIRA, cho phép lên lịch từng ngày và log worklog lên JIRA qua `jiraWorklog.js`.
 
 ### 2.3 Đối tượng người dùng
 
@@ -656,8 +671,8 @@ Component `ExportBar.jsx` cho phép người dùng xuất dữ liệu từ dashb
 |---------------------|-------------------------------------------------------------------|
 | **Mã yêu cầu**      | FR-08                                                             |
 | **Tên yêu cầu**     | Lưu & So sánh lịch sử                                             |
-| **Phase**           | 3 (Dự kiến)                                                       |
-| **Độ ưu tiên**      | Thấp                                                              |
+| **Phase**           | 3 (Đã hoàn thành)                                                  |
+| **Độ ưu tiên**      | Trung bình                                                         |
 
 #### Mô tả chi tiết
 
@@ -730,15 +745,258 @@ Cho phép người dùng lưu phiên phân tích hiện tại (dữ liệu dashb
 
 #### Mô tả chi tiết
 
-Component `JiraConnect.jsx` cho phép người dùng kết nối trực tiếp đến JIRA qua **hai phương thức**:
-
-1. **API Token (Basic Auth)** — dành cho người dùng có quyền API JIRA (tạo token từ Atlassian Account).
-2. **Bookmarklet** — dành cho người dùng không có quyền API. Bookmarklet chạy trên trang JIRA (cùng origin → tự động xác thực qua session cookie), fetch dữ liệu và chuyển đến dashboard qua URL hash.
-
-Luôn giữ tùy chọn CSV làm fallback.
+Component `JiraConnect.jsx` cho phép người dùng kết nối trực tiếp đến JIRA qua **API Token (Basic Auth)** — dành cho người dùng có quyền API JIRA (tạo token từ Atlassian Account).
 
 #### Phương thức 1: API Token (Basic Auth)
 
 | Đầu vào             | Kiểu     | Mô tả                                                    |
 |---------------------|----------|----------------------------------------------------------|
 | JIRA URL            | text     | Ví dụ: `https://jira.company.com` hoặc `https://20.84.97.109:3033` |
+| API Token           | password | Token tạo từ Atlassian Account |
+| Project Key         | text     | Mã dự án JIRA (vd: `PROJ`) |
+| JQL (tùy chọn)      | text     | JQL filter tùy chỉnh |
+| Assignee (tùy chọn) | text     | Lọc theo người thực hiện |
+
+---
+
+### FR-10: Tính Effort
+
+| Trường              | Nội dung                                                          |
+|---------------------|-------------------------------------------------------------------|
+| **Mã yêu cầu**      | FR-10                                                             |
+| **Tên yêu cầu**     | Tính Effort                                                       |
+| **Phase**           | 2 (Đã hoàn thành)                                                 |
+| **Độ ưu tiên**      | Cao                                                              |
+
+#### Mô tả chi tiết
+
+Tính toán tỷ lệ effort dựa trên công thức ratio: `Effort = availableHr / totalHr`. Effort < 1 = vượt kế hoạch (xanh), Effort ≈ 1 = đủ (vàng), Effort > 1 = thiếu (đỏ — cảnh báo).
+
+Component `EffortCard.jsx` hiển thị gauge bar với màu sắc động. Chi tiết tính toán hiển thị trong tooltip (vd: "22 ngày × 7h + 4.0h OT - 8.0h nghỉ = 150.0h chuẩn / 155.7h đã log").
+
+---
+
+### FR-11: Quản lý OT & Nghỉ phép
+
+| Trường              | Nội dung                                                          |
+|---------------------|-------------------------------------------------------------------|
+| **Mã yêu cầu**      | FR-11                                                             |
+| **Tên yêu cầu**     | Quản lý OT & Nghỉ phép                                            |
+| **Phase**           | 2 (Đã hoàn thành)                                                 |
+| **Độ ưu tiên**      | Trung bình                                                        |
+
+#### Mô tả chi tiết
+
+Component `OTPanelInline.jsx` cho phép người dùng nhập tổng số giờ OT và nghỉ phép. Quick-add buttons: OT +0.5h, +1.5h, +2h, +4h, +8h; Leave +1.75h, +3.5h, +7h, +14h. Dữ liệu được lưu vào localStorage và hiển thị trên dashboard.
+
+---
+
+### FR-12: Gán nhãn tùy chỉnh
+
+| Trường              | Nội dung                                                          |
+|---------------------|-------------------------------------------------------------------|
+| **Mã yêu cầu**      | FR-12                                                             |
+| **Tên yêu cầu**     | Gán nhãn tùy chỉnh                                                |
+| **Phase**           | 3 (Đã hoàn thành)                                                 |
+| **Độ ưu tiên**      | Thấp                                                              |
+
+#### Mô tả chi tiết
+
+Cho phép tạo nhãn với màu sắc tùy chỉnh, gán nhãn thủ công từng task hoặc hàng loạt, và auto-rule tự động gán nhãn dựa trên điều kiện (component, assignee, loại task). Component `LabelBadge.jsx`, `LabelDropdown.jsx` hiển thị và quản lý nhãn inline trong tab Data. `labelUtils.js` xử lý logic đồng bộ và auto-rules.
+
+---
+
+### FR-13: Chế độ Dark/Light Theme
+
+| Trường              | Nội dung                                                          |
+|---------------------|-------------------------------------------------------------------|
+| **Mã yêu cầu**      | FR-13                                                             |
+| **Tên yêu cầu**     | Chế độ Dark/Light Theme                                           |
+| **Phase**           | 4 (Đã hoàn thành)                                                 |
+| **Độ ưu tiên**      | Trung bình                                                        |
+
+#### Mô tả chi tiết
+
+Hỗ trợ chuyển đổi giữa giao diện sáng (light) và tối (dark) qua CSS custom properties + Tailwind `dark:` prefix. Theme được đồng bộ vào `<html class="dark">` và lưu trong localStorage (`jira-dash-theme`). Nút toggle Sun/Moon trên TopBar và trên màn hình đăng nhập (thiết kế 2 cột). Animation mượt mà với CSS transition 0.2s.
+
+---
+
+### FR-14: Màn hình đăng nhập
+
+| Trường              | Nội dung                                                          |
+|---------------------|-------------------------------------------------------------------|
+| **Mã yêu cầu**      | FR-14                                                             |
+| **Tên yêu cầu**     | Màn hình đăng nhập bảo vệ app                                      |
+| **Phase**           | 6 (Đã hoàn thành)                                                 |
+| **Độ ưu tiên**      | Cao                                                              |
+
+#### Mô tả chi tiết
+
+Component `LoginScreen.jsx` bảo vệ toàn bộ ứng dụng bằng mật khẩu. Sử dụng Web Crypto API (SubtleCrypto) để tạo SHA-256 hash. Khóa tài khoản sau 5 lần nhập sai (tự động mở khóa sau 30 phút). Thiết kế 2 cột: form đăng nhập bên trái, giới thiệu tính năng bên phải. Có nút chuyển Dark/Light mode. Mật khẩu mặc định: `123456aA@`. `ProtectedRoute` component kiểm tra `isPasswordSet()` trước khi render children.
+
+---
+
+### FR-15: Flow Wizard
+
+| Trường              | Nội dung                                                          |
+|---------------------|-------------------------------------------------------------------|
+| **Mã yêu cầu**      | FR-15                                                             |
+| **Tên yêu cầu**     | Flow Wizard thiết lập                                              |
+| **Phase**           | 6 (Đã hoàn thành)                                                 |
+| **Độ ưu tiên**      | Cao                                                              |
+
+#### Mô tả chi tiết
+
+Luồng thiết lập có hướng dẫn từng bước: **Login** → **Connect JIRA** (JiraConnect.jsx) → **Select Project** (ProjectSelector.jsx — grid card với tìm kiếm) → **Query Config** (QueryConfig.jsx — JQL + Assignee) → **Dashboard**. `StepIndicator.jsx` hiển thị tiến trình. Nút đổi dự án từ Dashboard quay lại bước chọn Project. Sử dụng react-router-dom để điều hướng giữa các bước.
+
+---
+
+### FR-16: Weekly Planner
+
+| Trường              | Nội dung                                                          |
+|---------------------|-------------------------------------------------------------------|
+| **Mã yêu cầu**      | FR-16                                                             |
+| **Tên yêu cầu**     | Weekly Planner                                                    |
+| **Phase**           | 6 (Đã hoàn thành)                                                 |
+| **Độ ưu tiên**      | Cao                                                              |
+
+#### Mô tả chi tiết
+
+Component `WeeklyPlanner.jsx` tại route `/work-plan/weekly`. Lên lịch công việc theo tuần (thứ 2 → thứ 6). Tự động load tasks từ JIRA. Kéo-thả hoặc click để thêm task vào từng ngày. Log worklog trực tiếp lên JIRA qua `jiraWorklog.js`. Lưu kế hoạch vào localStorage. Theo dõi tiến độ theo giờ (mục tiêu 35h/tuần). Điều hướng tuần (← →).
+
+---
+
+### FR-17: Create Task
+
+| Trường              | Nội dung                                                          |
+|---------------------|-------------------------------------------------------------------|
+| **Mã yêu cầu**      | FR-17                                                             |
+| **Tên yêu cầu**     | Create Task View                                                  |
+| **Phase**           | 6 (Đã hoàn thành)                                                 |
+| **Độ ưu tiên**      | Trung bình                                                        |
+
+#### Mô tả chi tiết
+
+Component `CreateTaskView.jsx` tại route `/work-plan/create` và `CreateTaskPanel.jsx` cho phép tạo task JIRA mới từ ứng dụng. Form nhập: summary, description, project. Gửi request tạo issue lên JIRA REST API.
+
+---
+
+### FR-18: Dashboard Tabs
+
+| Trường              | Nội dung                                                          |
+|---------------------|-------------------------------------------------------------------|
+| **Mã yêu cầu**      | FR-18                                                             |
+| **Tên yêu cầu**     | Dashboard phân tab                                                 |
+| **Phase**           | 6 (Đã hoàn thành)                                                 |
+| **Độ ưu tiên**      | Cao                                                              |
+
+#### Mô tả chi tiết
+
+`DashboardTabs.jsx` cung cấp 7 tab điều hướng: **Overview** (StatsGrid + FilterBar), **Charts** (6 biểu đồ Chart.js với sub-tab), **Data** (DataTable + TaskDetail), **Gantt** (GanttChart), **Compare** (MonthComparison + AutoReport + CompareView), **OT** (OTPanelInline), **History** (HistoryPanelInline). Sử dụng react-router-dom params (`/dashboard/:tab`) và `AnimatePresence` cho chuyển tiếp mượt mà.
+
+---
+
+### FR-19: Global Auto-refresh
+
+| Trường              | Nội dung                                                          |
+|---------------------|-------------------------------------------------------------------|
+| **Mã yêu cầu**      | FR-19                                                             |
+| **Tên yêu cầu**     | Global Auto-refresh                                               |
+| **Phase**           | 6 (Đã hoàn thành)                                                 |
+| **Độ ưu tiên**      | Trung bình                                                        |
+
+#### Mô tả chi tiết
+
+Dashboard tự động refresh dữ liệu từ JIRA API theo interval cấu hình được (5/15/30/60 phút). Component `Dashboard.jsx` sử dụng `setInterval` với `useRef` để quản lý interval. Dừng auto-refresh khi data source không phải JIRA hoặc `globalAutoRefresh === 'off'`. Hiển thị thời gian cập nhật cuối cùng và nút manual refresh.
+
+---
+
+## 4. Yêu cầu phi chức năng
+
+### 4.1 Hiệu năng
+
+- Dashboard tải và render < 3 giây với ≤ 500 task.
+- Chart.js render với `responsive: true, maintainAspectRatio: false`.
+- `useMemo` và `useCallback` được dùng rộng rãi để tối ưu re-render.
+
+### 4.2 Khả năng sử dụng
+
+- Giao diện Tiếng Việt có dấu (Unicode), hỗ trợ Tiếng Anh qua i18n.
+- Dark/Light theme với chuyển đổi tức thì.
+- Responsive: mobile (≥ 360px), tablet, desktop.
+- Phím tắt và công cụ tìm kiếm trong DataTable.
+
+### 4.3 Độ tin cậy
+
+- Dữ liệu được lưu trong localStorage (giới hạn ~5–10 MB).
+- Auto-refresh có cơ chế bắt lỗi, hiển thị thông báo khi fetch thất bại.
+- API Token không lưu trong localStorage ở Electron (dùng config file).
+
+### 4.4 Bảo mật
+
+- Mật khẩu đăng nhập hash SHA-256, không lưu plaintext.
+- Lockout sau 5 lần nhập sai trong 30 phút.
+- API Token truyền qua Header Authorization: Basic trong Electron IPC.
+
+### 4.5 Khả năng bảo trì
+
+- Kiến trúc component-based, mỗi component một trách nhiệm.
+- Context API + useReducer cho state management tập trung.
+- Utility modules tách rời logic nghiệp vụ (jiraApi, labelUtils, dateUtils...).
+
+### 4.6 Tương thích
+
+- Trình duyệt: Chrome 90+, Firefox 90+, Edge 90+, Safari 15+.
+- Hệ điều hành: Windows 10+, macOS 11+, Linux.
+- Electron: portable .exe cho Windows.
+
+## 5. Yêu cầu giao diện người dùng
+
+### 5.1 Bố cục tổng thể
+
+- Login screen 2 cột: form bên trái, giới thiệu bên phải.
+- AppShell: TopBar (sticky) + Sidebar (collapse/expand, phân cấp) + Main content (scroll).
+- Dashboard 7 tab điều hướng bằng tab bar (pill-style).
+
+### 5.2 Bảng màu & Typography
+
+- CSS custom properties cho theme (--bg-primary, --text-primary, --accent...).
+- Font: **Consolas** toàn bộ ứng dụng.
+- Dark mode: `class="dark"` trên `<html>`.
+
+### 5.3 Ngôn ngữ
+
+- UI mặc định: Tiếng Việt (có dấu).
+- Hỗ trợ chuyển đổi sang English qua language switcher.
+- i18n provider với file `vi.js`, `en.js`.
+
+## 6. Phụ lục
+
+### 6.1 Phân kỳ phát triển
+
+| Phase | Nội dung | Trạng thái |
+|-------|----------|------------|
+| 1 | Nhập CSV, dashboard thống kê, 5 biểu đồ, Gantt | ✅ Hoàn thành |
+| 2 | Bộ lọc, DataTable, xuất báo cáo, effort, OT/Leave | ✅ Hoàn thành |
+| 3 | Lịch sử snapshot, JIRA API, gán nhãn | ✅ Hoàn thành |
+| 4 | React 19 SPA, Vite, Tailwind, Framer Motion, dark/light theme | ✅ Hoàn thành |
+| 5 | react-router-dom, 7 tab dashboard, i18n, Docker/K8s, global Cancelled filter | ✅ Hoàn thành |
+| 6 (v1.2.0) | Login, Wizard Flow, Weekly Planner, Create Task, Dashboard Tabs, Auto-refresh | ✅ Hoàn thành |
+
+### 6.2 Ma trận vết (Requirements Traceability Matrix)
+
+| Yêu cầu | Module | Component | File / Route | Trạng thái |
+|---------|--------|-----------|-------------|------------|
+| FR-01 → FR-07 | M-001 | Dashboard, FilterBar, StatsGrid, ChartGrid, DataTable, GanttChart | `/dashboard` | ✅ |
+| FR-08 | M-001 | HistoryPanelInline, historyUtils.js, CompareView | `/dashboard/history` | ✅ |
+| FR-09 | M-001 | JiraConnect, jiraApi.js | `/connect` | ✅ |
+| FR-10 | M-001 | EffortCard, effortCalculator.js | `/dashboard/overview` | ✅ |
+| FR-11 | M-001 | OTPanelInline | `/dashboard/ot` | ✅ |
+| FR-12 | M-001 | LabelBadge, LabelDropdown, TaskDetail, labelUtils.js | `/dashboard/data` | ✅ |
+| FR-13 | M-001 | index.css, TopBar, AppContext (darkMode) | Toàn bộ app | ✅ |
+| FR-14 | M-002 | LoginScreen, authUtils.js, ProtectedRoute | `/login` | ✅ |
+| FR-15 | M-003 | JiraConnect, ProjectSelector, QueryConfig, StepIndicator | `/connect` → `/projects` → `/query` → `/dashboard` | ✅ |
+| FR-16 | M-004 | WeeklyPlanner, jiraWorklog.js | `/work-plan/weekly` | ✅ |
+| FR-17 | M-004 | CreateTaskView, CreateTaskPanel | `/work-plan/create` | ✅ |
+| FR-18 | M-001 | DashboardTabs, Dashboard (tab panels) | `/dashboard/:tab` | ✅ |
+| FR-19 | M-001 | Dashboard (auto-refresh), AppContext (globalAutoRefresh) | `/dashboard` | ✅ |

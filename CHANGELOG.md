@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.2.0 (2026-07-01)
+## v1.2.0 (2026-07-04)
 
 ### Added
 - Màn hình đăng nhập bảo vệ app (SHA-256, khóa 5 lần sai)

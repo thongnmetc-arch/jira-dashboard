@@ -8,6 +8,7 @@ import ProjectSelector from './components/ProjectSelector';
 import QueryConfig from './components/QueryConfig';
 import Dashboard from './components/Dashboard';
 import WeeklyPlanner from './components/WeeklyPlanner';
+import CreateTaskView from './components/CreateTaskView';
 import LoginScreen from './components/LoginScreen';
 import { fetchJiraIssues } from './utils/jiraApi';
 import { isPasswordSet } from './utils/authUtils';
@@ -100,50 +101,7 @@ function AppContent({ jiraConfig: wizardConfig, selectedProject: wizardProject }
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Read JIRA data from URL hash (cross-origin transfer from bookmarklet)
-  useEffect(() => {
-    const readHash = () => {
-      const hash = window.location.hash;
-      if (hash.startsWith('#jira-data=')) {
-        try {
-          const encoded = hash.replace('#jira-data=', '');
-          const json = decodeURIComponent(escape(atob(encoded)));
-          const data = JSON.parse(json);
 
-          if (data.tasks && data.tasks.length > 0) {
-            const tasks = data.tasks.map((t) => ({
-              ...t,
-              created: t.created ? new Date(t.created) : null,
-              resolved: t.resolved ? new Date(t.resolved) : null,
-              startDate: t.startDate ? new Date(t.startDate) : null,
-            }));
-
-            try {
-              localStorage.setItem('jira-dash-data', JSON.stringify(data));
-            } catch (e) {}
-
-            dispatch({ type: 'SET_TASKS', payload: tasks });
-            dispatch({ type: 'SET_OT_LEAVE', payload: { otTotal: 0, leaveTotal: 0 } });
-            try {
-              localStorage.removeItem('jira-dash-ot-leave');
-            } catch (e) {}
-            dispatch({ type: 'SET_DATA_SOURCE', payload: 'jira-bookmarklet' });
-            if (data.jql) {
-              dispatch({ type: 'SET_JQL_USED', payload: data.jql });
-            }
-
-            window.history.replaceState(null, '', window.location.pathname);
-          }
-        } catch (e) {
-          console.error('Lỗi đọc dữ liệu JIRA từ URL:', e);
-        }
-      }
-    };
-
-    readHash();
-    window.addEventListener('hashchange', readHash);
-    return () => window.removeEventListener('hashchange', readHash);
-  }, [dispatch]);
 
   return (
     <AppShell>
@@ -310,11 +268,9 @@ function WorkPlanRoute({ tab }) {
   }, [navigate]);
 
   return (
-    <AppProvider onChangeProject={handleChangeProject}>
-      <AppShell>
-        <WeeklyPlanner initialTab={tab} />
-      </AppShell>
-    </AppProvider>
+    <AppShell>
+      {tab === 'createtask' ? <CreateTaskView /> : <WeeklyPlanner />}
+    </AppShell>
   );
 }
 

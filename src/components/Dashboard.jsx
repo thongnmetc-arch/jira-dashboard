@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RotateCcw, RefreshCw, Wifi, FileText, ArrowUp, ArrowLeftRight, ChevronDown } from 'lucide-react';
+import { RefreshCw, Wifi, ArrowUp, ArrowLeftRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { fetchJiraIssues } from '../utils/jiraApi';
 import { useI18n } from '../i18n';
@@ -23,66 +23,6 @@ import MonthComparison from './MonthComparison';
 import AutoReport from './AutoReport';
 import EffortCard from './EffortCard';
 import CompareView from './CompareView';
-
-const AUTO_REFRESH_OPTIONS = (t) => [
-  { value: 'off', label: t('dashboard.off') },
-  { value: '5', label: t('dashboard.min5') },
-  { value: '15', label: t('dashboard.min15') },
-  { value: '30', label: t('dashboard.min30') },
-  { value: '60', label: t('dashboard.hour1') },
-];
-
-// ── Custom dropdown ─────────────────────────────────────────────────────────
-
-function Dropdown({ value, onChange, options, className }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const hasValue = value !== '' && value !== undefined && value !== null;
-  const selected = options.find(o => o.value === value);
-  const displayLabel = selected ? selected.label : '';
-
-  return (
-    <div ref={ref} className="relative flex-shrink-0">
-      <button
-        onClick={() => setOpen(!open)}
-        className={`flex items-center gap-1.5 px-2.5 h-8 rounded-lg text-xs font-medium transition-colors border cursor-pointer ${
-          hasValue
-            ? 'border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]'
-            : 'border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:border-[var(--accent)]/50'
-        } ${className || ''}`}
-      >
-        <span className="max-w-[100px] truncate">{displayLabel}</span>
-        <ChevronDown className={`w-3 h-3 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && (
-        <div className="absolute top-full left-0 mt-1 z-50 w-56 max-h-60 overflow-y-auto bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-xl shadow-xl py-1">
-          {options.map(opt => (
-            <button
-              key={opt.value}
-              onClick={() => { onChange(opt.value); setOpen(false); }}
-              className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-[var(--bg-secondary)] cursor-pointer ${
-                value === opt.value
-                  ? 'text-[var(--accent)] font-medium bg-[var(--accent-light)]'
-                  : 'text-[var(--text-primary)]'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── Panel wrappers ──────────────────────────────────────────────────────────
 
@@ -318,8 +258,8 @@ export default function Dashboard() {
       intervalRef.current = null;
     }
 
-    if (state.dataSource === 'jira' && state.jiraConnected && state.jiraAutoRefresh !== 'off') {
-      const minutes = parseInt(state.jiraAutoRefresh, 10);
+    if (state.dataSource === 'jira' && state.jiraConnected && state.globalAutoRefresh !== 'off') {
+      const minutes = parseInt(state.globalAutoRefresh, 10);
       if (!isNaN(minutes) && minutes > 0) {
         intervalRef.current = setInterval(async () => {
           try {
@@ -343,7 +283,7 @@ export default function Dashboard() {
         intervalRef.current = null;
       }
     };
-  }, [state.dataSource, state.jiraConnected, state.jiraAutoRefresh, dispatch]);
+  }, [state.dataSource, state.jiraConnected, state.globalAutoRefresh, dispatch]);
 
   // Manual refresh
   const handleManualRefresh = useCallback(async () => {
@@ -367,10 +307,6 @@ export default function Dashboard() {
     }
   }, [state.dataSource, state.jiraConnected, state.jiraConfig, dispatch]);
 
-  const setAutoRefresh = (value) => {
-    dispatch({ type: 'SET_JIRA_AUTO_REFRESH', payload: value });
-  };
-
   const totalHr = filteredTasks.reduce((s, t) => s + t.timeSpentHr, 0);
 
   const formatTime = (isoString) => {
@@ -392,7 +328,7 @@ export default function Dashboard() {
         exit={{ opacity: 0, y: 4 }}
         transition={{ duration: 0.25, ease: 'easeOut' }}
       >
-        {/* ── Top bar: Connection info + Auto-refresh (JIRA only) ── */}
+        {/* ── Top bar: Connection info + Manual refresh (JIRA only) ── */}
         {state.dataSource === 'jira' && state.jiraConnected && (
           <div className="flex flex-wrap items-center justify-between gap-2 mb-6 p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-primary)]">
             <div className="flex items-center gap-3 text-xs">
@@ -417,16 +353,6 @@ export default function Dashboard() {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[0.65rem] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider whitespace-nowrap">
-                  {t('dashboard.autoRefresh')}:
-                </span>
-                <Dropdown
-                  value={state.jiraAutoRefresh}
-                  onChange={setAutoRefresh}
-                  options={AUTO_REFRESH_OPTIONS(t)}
-                />
-              </div>
               <button
                 onClick={handleManualRefresh}
                 disabled={refreshing}
@@ -447,8 +373,6 @@ export default function Dashboard() {
                 <>📂 <span>{t('dashboard.source')} <strong>{t('dashboard.csvSource')}</strong></span></>
               ) : state.dataSource === 'jira' ? (
                 <>🔌 <span>{t('dashboard.source')} <strong>{t('dashboard.jiraApi')}</strong> · {state.jiraConfig?.projectKey || ''}</span></>
-              ) : state.dataSource === 'jira-bookmarklet' ? (
-                <>📌 <span>{t('dashboard.source')} <strong>{t('dashboard.bookmark')}</strong></span></>
               ) : state.dataSource === 'html' ? (
                 <>📄 <span>{t('dashboard.source')} <strong>{t('dashboard.htmlExport')}</strong></span></>
               ) : state.dataSource === 'history' ? (
