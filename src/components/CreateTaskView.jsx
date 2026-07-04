@@ -415,8 +415,6 @@ export default function CreateTaskView() {
         });
       });
 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(allPlans));
-
       // Also create JIRA issues
       let config = state.jiraConfig;
       if (!config?.url) {
@@ -467,14 +465,29 @@ const { url, token, projectKey, assignee: configAssignee, jql } = config || {};
 
         // Show result
         if (created > 0) {
+          // Save to localStorage only if at least one JIRA issue was created
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(allPlans));
           setSuccess(true);
           setCreateResult(`Đã tạo ${created} issue trên JIRA${failed > 0 ? `, ${failed} lỗi` : ''}`);
-          setTimeout(() => { setSuccess(false); setCreateResult(''); }, 5000);
+        } else if (failed > 0) {
+          // All failed — don't save to localStorage
+          setSuccess(false);
+          setCreateResult(`Tạo thất bại: ${failed} lỗi`);
+        } else {
+          // No JIRA config — just saved locally
+          setSuccess(true);
+          setCreateResult('Đã lưu vào kế hoạch tuần');
         }
+        setTimeout(() => { setSuccess(false); setCreateResult(''); }, 5000);
+      } else {
+        // No JIRA config — save locally only
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(allPlans));
+        setSuccess(true);
+        setCreateResult('Đã lưu vào kế hoạch tuần');
+        setTimeout(() => { setSuccess(false); setCreateResult(''); }, 5000);
       }
 
       // Reset form
-      setSuccess(true);
       setTaskName('');
       setSelectedDays([]);
       setSprint('');
@@ -483,7 +496,6 @@ const { url, token, projectKey, assignee: configAssignee, jql } = config || {};
       setStartDate('');
       setDueDate('');
       setComponent('');
-      setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       console.error('Create tasks failed:', err);
     } finally {
@@ -768,14 +780,14 @@ const { url, token, projectKey, assignee: configAssignee, jql } = config || {};
               </button>
             </div>
 
-            {/* Success feedback */}
-            {success && (
+            {/* Success / error feedback */}
+            {success !== false && createResult && (
               <motion.div
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-3 text-xs text-center text-[var(--success)] font-medium"
+                className={`mt-3 text-xs text-center font-medium ${createResult.includes('thất bại') ? 'bg-[var(--danger)]/10 border border-[var(--danger)]/30 text-[var(--danger)]' : 'text-[var(--success)]'}`}
               >
-                {createResult || '✓ Đã tạo công việc thành công!'}
+                {createResult}
               </motion.div>
             )}
 

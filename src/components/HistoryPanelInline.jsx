@@ -166,9 +166,29 @@ export default function HistoryPanelInline() {
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
         <History className="w-4 h-4 text-[var(--accent)]" />
-        <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+        <h2 className="text-sm font-semibold text-[var(--text-primary)] flex-1">
           {t('history.title')}
         </h2>
+        <button
+          onClick={() => {
+            if (confirm('Xoá tất cả dữ liệu cache? Hành động này không thể hoàn tác.')) {
+              // Clear all app-related localStorage keys
+              const keysToRemove = [];
+              for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('jira-dash-')) {
+                  keysToRemove.push(key);
+                }
+              }
+              keysToRemove.forEach(k => localStorage.removeItem(k));
+              window.location.reload();
+            }
+          }}
+          className="p-1.5 rounded-md text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors cursor-pointer"
+          title="Xoá cache hệ thống"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       <div className="space-y-6">
