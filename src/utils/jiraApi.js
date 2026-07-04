@@ -280,6 +280,77 @@ async function electronFetchProjects(url, token) {
   }
 }
 
+// ── Fetch Project Components ───────────────────────────────────────────
+
+/**
+ * Fetch ALL components for a project from the JIRA project API.
+ * This is more reliable than extracting from issues (which may be capped at 500).
+ * Falls back gracefully if the endpoint is not available on older JIRA versions.
+ */
+async function electronFetchComponents(url, token, projectKey) {
+  const baseUrl = (url || '').replace(/\/$/, '');
+  const apiUrl = `${baseUrl}/rest/api/latest/project/${projectKey}/components`;
+  const response = await window.electronAPI.jiraFetch(apiUrl, {
+    method: 'GET',
+    headers: {
+      'Authorization': buildAuth(token),
+      'Accept': 'application/json',
+    },
+  });
+
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error(`Lỗi ${response.status}: ${String(response.body || '').substring(0, 300)}`);
+  }
+
+  // Try to parse, handle non-JSON responses
+  try {
+    const data = JSON.parse(response.body);
+    return (Array.isArray(data) ? data : []).map(c => c.name).filter(Boolean).sort();
+  } catch {
+    throw new Error(`Invalid response (not JSON): ${String(response.body || '').substring(0, 200)}`);
+  }
+}
+
+export async function fetchComponents(url, token, projectKey) {
+  // Electron desktop app
+  if (window.electronAPI?.isElectron) {
+    return electronFetchComponents(url, token, projectKey);
+  }
+
+  // Browser via Vite proxy
+  const proxyPath = `/api/jira/rest/api/latest/project/${encodeURIComponent(projectKey)}/components`;
+  const auth = buildAuth(token);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(proxyPath, {
+      method: 'GET',
+      headers: {
+        'Authorization': auth,
+        'Accept': 'application/json',
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      let errorText = '';
+      try { errorText = await res.text(); } catch (e) { /* ignore */ }
+      throw new Error(`Lỗi ${res.status}: ${errorText.substring(0, 300) || res.statusText}`);
+    }
+
+    const data = await res.json();
+    return (data || []).map(c => c.name).filter(Boolean).sort();
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err.name === 'AbortError') throw new Error('Kết nối quá thời gian khi lấy components.');
+    throw err;
+  }
+}
+
 // ── Public API ─────────────────────────────────────────────────────────
 
 // Step 0: Fetch available projects (used by ProjectSelector wizard step)
@@ -451,7 +522,8 @@ export async function fetchJiraIssues(url, token, projectKey, assignee, jql) {
     console.log('[JIRA API] Fetching:', apiPath);
 
     try {
-      const res = await fetch(apiPath, {
+    console.log('[CREATE ISSUE] Sending POST request...');
+    const res = await fetch(apiPath, {
         method: 'GET',
         headers: {
           'Authorization': auth,
@@ -571,7 +643,9 @@ function parseJiraIssue(issue) {
     issueType: fields.issuetype?.name || '',
     status: fields.status?.name || '',
     priority: fields.priority?.name || '',
-    assignee: fields.assignee?.displayName || fields.assignee?.name || '',
+    assigneeName: fields.assignee?.displayName || '',
+    assigneeEmail: fields.assignee?.name || fields.assignee?.emailAddress || '',
+    assignee: fields.assignee?.name || fields.assignee?.emailAddress || fields.assignee?.displayName || '',
     comps,
     sprints: sprints.filter(Boolean),
     primarySprint: sprints.length > 0 ? sprints[sprints.length - 1] : '',
@@ -680,6 +754,7 @@ export async function createIssue(url, token, projectKey, issueData) {
         'Authorization': auth,
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'X-Atlassian-Token': 'no-check',
       },
       body: JSON.stringify(body),
     });
@@ -691,6 +766,13 @@ export async function createIssue(url, token, projectKey, issueData) {
 
   // Browser — Vite proxy
   const apiPath = `/api/jira/rest/api/latest/issue`;
+
+  console.log('[CREATE ISSUE] URL:', apiPath);
+  console.log('[CREATE ISSUE] Headers:', JSON.stringify({
+    'Authorization': auth.substring(0, 20) + '...',
+    'Content-Type': 'application/json',
+  }));
+  console.log('[CREATE ISSUE] Body:', JSON.stringify(body, null, 2));
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
@@ -705,13 +787,18 @@ export async function createIssue(url, token, projectKey, issueData) {
       },
       body: JSON.stringify(body),
       signal: controller.signal,
+      credentials: 'include',
     });
 
     clearTimeout(timeout);
 
+    console.log('[CREATE ISSUE] Response status:', res.status);
+    console.log('[CREATE ISSUE] Response headers:', [...res.headers.entries()]);
+
     if (!res.ok) {
       let errorText = '';
       try { errorText = await res.text(); } catch (e) { /* ignore */ }
+      console.log('[CREATE ISSUE] Error response:', errorText);
       throw new Error(`Lỗi ${res.status}: ${errorText.substring(0, 300) || res.statusText}`);
     }
 

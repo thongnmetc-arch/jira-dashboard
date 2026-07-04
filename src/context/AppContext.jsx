@@ -314,10 +314,12 @@ export function AppProvider({ children, onChangeProject }) {
     } catch (e) {}
   }, [state.otLeaveData]);
 
-  // Persist JIRA config to localStorage
+  // Persist JIRA config to localStorage (only when meaningful data exists)
   useEffect(() => {
     try {
-      localStorage.setItem('jira-dash-config', JSON.stringify(state.jiraConfig));
+      if (state.jiraConfig?.url && state.jiraConfig?.token) {
+        localStorage.setItem('jira-dash-config', JSON.stringify(state.jiraConfig));
+      }
     } catch (e) {}
   }, [state.jiraConfig]);
 

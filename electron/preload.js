@@ -9,19 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     body: options?.body || null,
   }),
 
-  // JIRA cookie-based authentication (Electron in-app login with Microsoft SSO)
-  jiraLoginStatus: () => ipcRenderer.invoke('jira-login-status'),
-  jiraLogin: () => ipcRenderer.invoke('jira-login'),
-  jiraLogout: () => ipcRenderer.invoke('jira-logout'),
-  jiraGetCookies: () => ipcRenderer.invoke('jira-get-cookies'),
-
-  // Listen for login-success events from the main process
-  onLoginSuccess: (callback) => {
-    const handler = () => callback();
-    ipcRenderer.on('jira-login-success', handler);
-    // Return cleanup function
-    return () => ipcRenderer.removeListener('jira-login-success', handler);
-  },
+  // App authentication: API Token only (no SSO)
 
   // Persistent storage (stored in userData directory)
   storeGet: (key) => ipcRenderer.invoke('store-get', key),

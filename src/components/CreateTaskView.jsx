@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Plus, Check, Loader2, Layers, User, ChevronDown, Clock, RotateCcw } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useI18n } from '../i18n';
+import { fetchJiraIssues, fetchComponents, createIssue } from '../utils/jiraApi';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -17,7 +18,7 @@ const DAY_LABELS_VN = {
   Sat: 'T7',
   Sun: 'CN',
 };
-const HOUR_OPTIONS = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8];
+const HOUR_OPTIONS = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7];
 
 // ── Helpers (mirrors WeeklyPlanner's getMonday / getWeekKey) ──────────────────
 
@@ -60,11 +61,33 @@ function keyToDate(key) {
   return new Date(y, m - 1, d);
 }
 
+// ── Calculate end time based on work schedule ────────────────────────────────
+
+function calculateEndTime(hours) {
+  // Full day (7h): 8:00 → 17:00
+  if (hours >= 7) return { hour: 17, min: 0 };
+  
+  // Normal calculation for other hours
+  const capped = Math.min(Math.max(hours, 0.5), 7);
+  const workMin = Math.round(capped * 60);
+  const morningMinutes = 4 * 60;
+  
+  let endMin;
+  if (workMin <= morningMinutes) {
+    endMin = 8 * 60 + workMin;
+  } else {
+    endMin = 13 * 60 + (workMin - morningMinutes);
+  }
+  
+  return { hour: Math.floor(endMin / 60), min: endMin % 60 };
+}
+
 // ── PopoverSelect ─────────────────────────────────────────────────────────────
 
 function PopoverSelect({ value, onChange, options, placeholder, icon: Icon }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     if (!open) return;
@@ -73,12 +96,16 @@ function PopoverSelect({ value, onChange, options, placeholder, icon: Icon }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  const isObj = options.length > 0 && typeof options[0] === 'object';
+  const filtered = options.filter(opt =>
+    (isObj ? opt.label : opt).toLowerCase().includes(search.toLowerCase())
+  );
   const hasValue = value && value !== '';
 
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => { setOpen(!open); if (!open) setSearch(''); }}
         className={`flex items-center gap-1.5 px-2.5 h-8 rounded-lg text-xs font-medium border transition-colors cursor-pointer w-full ${
           hasValue
             ? 'border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]'
@@ -86,23 +113,39 @@ function PopoverSelect({ value, onChange, options, placeholder, icon: Icon }) {
         }`}
       >
         {Icon && <Icon className="w-3 h-3" />}
-        <span className="flex-1 text-left truncate">{hasValue ? value : placeholder}</span>
+        <span className="flex-1 text-left truncate">{hasValue ? (isObj ? (options.find(o => o.value === value)?.label || value) : value) : placeholder}</span>
         <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-50 w-full max-h-48 overflow-y-auto bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-xl shadow-xl py-1">
-          <button onClick={() => { onChange(''); setOpen(false); }}
+        <div className="absolute top-full left-0 mt-1 z-50 w-full max-h-60 overflow-y-auto bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-xl shadow-xl py-1">
+          {/* Search input */}
+          <div className="px-2 pb-1">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tìm kiếm..."
+              className="w-full text-xs bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md px-2 py-1 outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+            />
+          </div>
+          <button onClick={() => { onChange(''); setOpen(false); setSearch(''); }}
             className="w-full text-left px-3 py-1.5 text-xs text-[var(--text-tertiary)] hover:bg-[var(--bg-secondary)] cursor-pointer">
             {placeholder}
           </button>
-          {options.map(opt => (
-            <button key={opt} onClick={() => { onChange(opt); setOpen(false); }}
-              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--bg-secondary)] cursor-pointer truncate ${
-                value === opt ? 'text-[var(--accent)] font-medium bg-[var(--accent-light)]' : 'text-[var(--text-primary)]'
-              }`}>
-              {opt}
-            </button>
-          ))}
+          {filtered.map(opt => {
+            const optValue = isObj ? opt.value : opt;
+            const optLabel = isObj ? opt.label : opt;
+            return (
+              <button key={optValue} onClick={() => { onChange(optValue); setOpen(false); setSearch(''); }}
+                className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--bg-secondary)] cursor-pointer truncate ${
+                  value === optValue ? 'text-[var(--accent)] font-medium bg-[var(--accent-light)]' : 'text-[var(--text-primary)]'
+                }`}>
+                {optLabel}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -122,9 +165,43 @@ export default function CreateTaskView() {
   // Task form
   const [taskName, setTaskName] = useState('');
   const [hours, setHours] = useState('');
+
+  // ── Auto-calculate start/end dates when hours change ──
+
+  useEffect(() => {
+    if (!hours || hours <= 0) {
+      setStartDate('');
+      setDueDate('');
+      return;
+    }
+
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0);
+    const endTime = calculateEndTime(parseFloat(hours));
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endTime.hour, endTime.min, 0);
+
+    // Format as datetime-local value: "YYYY-MM-DDTHH:MM"
+    const fmt = (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const h = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      return `${y}-${m}-${day}T${h}:${min}`;
+    };
+
+    setStartDate(fmt(start));
+    setDueDate(fmt(end));
+  }, [hours]);
+
   const [sprint, setSprint] = useState('');
   const [assignee, setAssignee] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [component, setComponent] = useState('');
+  const [components, setComponents] = useState([]);
   const [success, setSuccess] = useState(false);
+  const [createResult, setCreateResult] = useState('');
   const [creating, setCreating] = useState(false);
 
   // ── Calendar data ──
@@ -145,23 +222,93 @@ export default function CreateTaskView() {
     return days;
   }, [viewDate]);
 
-  // ── Derived data from state ──
+  // ── Meta data fetched from JIRA API ──
 
-  const sprints = useMemo(() => {
-    const set = new Set();
-    state.allTasks.forEach((t) => {
-      if (t.primarySprint) set.add(t.primarySprint);
-    });
-    return [...set].sort();
-  }, [state.allTasks]);
+  const [sprints, setSprints] = useState([]);
+  const [assigneeList, setAssigneeList] = useState([]); // array of { label, value }
+  const [loadingMeta, setLoadingMeta] = useState(false);
 
-  const assigneeList = useMemo(() => {
-    const set = new Set();
-    state.allTasks.forEach((t) => {
-      if (t.assignee) set.add(t.assignee);
-    });
-    return [...set].sort();
-  }, [state.allTasks]);
+  const metaLoadedRef = useRef(false);
+
+  useEffect(() => {
+    let config = state.jiraConfig;
+    if (!config?.url) {
+      try {
+        const saved = localStorage.getItem('jira-dash-config');
+        if (saved) config = JSON.parse(saved);
+      } catch(e) {}
+    }
+    const { url, token, projectKey } = config || {};
+    if (!url || !token || !projectKey) return;
+    if (metaLoadedRef.current) return;
+
+    metaLoadedRef.current = true;
+
+    const loadMeta = async () => {
+      setLoadingMeta(true);
+      try {
+        const tasks = await fetchJiraIssues(url, token, projectKey, '', '');
+
+        // Extract unique sprints
+        const sprintSet = new Set();
+        tasks.forEach((t) => {
+          if (t.primarySprint) sprintSet.add(t.primarySprint);
+        });
+        setSprints([...sprintSet].sort());
+
+        // Extract unique assignees with displayName as label, name as value
+        const assigneeMap = new Map();
+        tasks.forEach((t) => {
+          if (t.assigneeName && t.assigneeEmail) {
+            const label = t.assigneeName;
+            const value = t.assigneeEmail;
+            if (!assigneeMap.has(value)) {
+              assigneeMap.set(value, { label, value });
+            }
+          } else if (t.assignee) {
+            // Fallback: use same value for both
+            const v = t.assignee;
+            if (!assigneeMap.has(v)) {
+              assigneeMap.set(v, { label: v, value: v });
+            }
+          }
+        });
+        const assigneeOptions = [...assigneeMap.values()].sort((a, b) => a.label.localeCompare(b.label));
+        setAssigneeList(assigneeOptions);
+
+        // Fetch components from dedicated project API (more complete than extracting from issues)
+        let compsFromApi;
+        try {
+          compsFromApi = await fetchComponents(url, token, projectKey);
+        } catch (compErr) {
+          console.warn('fetchComponents failed, falling back to extraction from tasks:', compErr.message);
+          compsFromApi = null;
+        }
+
+        // Extract components from fetched issues as fallback
+        const compSet = new Set();
+        tasks.forEach((t) => {
+          if (t.comps && Array.isArray(t.comps)) {
+            t.comps.forEach((c) => { if (c) compSet.add(c); });
+          }
+        });
+
+        if (compsFromApi && compsFromApi.length > 0) {
+          setComponents(compsFromApi);
+        } else {
+          setComponents([...compSet].sort());
+        }
+
+        console.log('Loaded metadata:', { sprints: sprintSet.size, assignees: assigneeMap.size, components: compsFromApi ? compsFromApi.length : compSet.size });
+      } catch (err) {
+        console.error('Failed to load metadata:', err);
+      } finally {
+        setLoadingMeta(false);
+      }
+    };
+
+    loadMeta();
+  }, [state.jiraConfig]);
 
   // ── Month navigation ──
 
@@ -206,7 +353,15 @@ export default function CreateTaskView() {
   // ── Create tasks ──
 
   const handleCreate = async () => {
-    if (!taskName.trim() || selectedDays.length === 0) return;
+    console.log('handleCreate called', { taskName, selectedDays, hours, sprint, assignee, component, startDate, dueDate });
+    if (!taskName.trim() || selectedDays.length === 0) {
+      console.warn('handleCreate bailed — taskName or selectedDays empty', {
+        taskName: `"${taskName}"`,
+        taskNameTrimmed: `"${taskName.trim()}"`,
+        selectedDays
+      });
+      return;
+    }
     setCreating(true);
 
     try {
@@ -219,6 +374,10 @@ export default function CreateTaskView() {
         const weekKey = getWeekKey(monday);
         const dayIndex = d.getDay() === 0 ? 6 : d.getDay() - 1;
         const dayName = DAY_NAMES[dayIndex];
+        const dayLabel = d.toLocaleDateString('vi-VN', { weekday: 'long' });
+        const finalName = selectedDays.length > 1
+          ? `${taskName.trim()} (${dayLabel})`
+          : taskName.trim();
 
         // Ensure the week entry exists (init with Mon-Fri only, per WeeklyPlanner convention)
         if (!allPlans[weekKey]) {
@@ -240,13 +399,16 @@ export default function CreateTaskView() {
             Date.now() +
             '_' +
             Math.random().toString(36).slice(2, 8),
-          name: taskName.trim(),
+          name: finalName,
           hours,
           jiraKey: '',
           status: 'Open',
           issueType: '',
           sprint,
           assignee,
+          startDate,
+          dueDate,
+          component,
           createdVia: 'bulk',
           logged: false,
           logError: '',
@@ -255,6 +417,62 @@ export default function CreateTaskView() {
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(allPlans));
 
+      // Also create JIRA issues
+      let config = state.jiraConfig;
+      if (!config?.url) {
+        try {
+          const saved = localStorage.getItem('jira-dash-config');
+          if (saved) config = JSON.parse(saved);
+        } catch(e) {}
+      }
+const { url, token, projectKey, assignee: configAssignee, jql } = config || {};
+      if (url && token && projectKey) {
+        let created = 0;
+        let failed = 0;
+
+        for (const dateKey of selectedDays) {
+          const d = keyToDate(dateKey);
+          const dayLabel = d.toLocaleDateString('vi-VN', { weekday: 'long' });
+          const finalName = selectedDays.length > 1
+            ? `${taskName.trim()} (${dayLabel})`
+            : taskName.trim();
+
+          try {
+            // Format dates for JIRA
+            const fmtDate = (dateStr) => {
+              if (!dateStr) return undefined;
+              const [datePart, timePart] = dateStr.split('T');
+              const [y, m, d] = datePart.split('-');
+              const [h, min] = (timePart || '00:00').split(':');
+              const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+              return `${d}/${months[parseInt(m)-1]}/${y.slice(2)} ${h}:${min}:00 AM`;
+            };
+
+            await createIssue(url, token, projectKey, {
+              issueType: 'Task',
+              summary: finalName,
+              description: `Created from JIRA Dashboard\nSprint: ${sprint || 'N/A'}\nComponent: ${component || 'N/A'}`,
+              assignee: configAssignee || undefined,
+              sprint: sprint || undefined,
+              startDate: fmtDate(startDate),
+              dueDate: fmtDate(dueDate),
+              originalEstimate: `${hours}h`,
+            });
+            created++;
+          } catch (err) {
+            console.error('Failed to create issue:', finalName, err);
+            failed++;
+          }
+        }
+
+        // Show result
+        if (created > 0) {
+          setSuccess(true);
+          setCreateResult(`Đã tạo ${created} issue trên JIRA${failed > 0 ? `, ${failed} lỗi` : ''}`);
+          setTimeout(() => { setSuccess(false); setCreateResult(''); }, 5000);
+        }
+      }
+
       // Reset form
       setSuccess(true);
       setTaskName('');
@@ -262,9 +480,12 @@ export default function CreateTaskView() {
       setSprint('');
       setAssignee('');
       setHours('');
+      setStartDate('');
+      setDueDate('');
+      setComponent('');
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
-      console.error('Failed to create tasks:', err);
+      console.error('Create tasks failed:', err);
     } finally {
       setCreating(false);
     }
@@ -409,6 +630,11 @@ export default function CreateTaskView() {
                 className="input-like w-full text-sm"
                 autoComplete="off"
               />
+              {selectedDays.length > 1 && (
+                <p className="text-[10px] text-[var(--text-tertiary)] mt-1">
+                  Tên công việc sẽ được thêm ngày trong tuần để phân biệt
+                </p>
+              )}
             </div>
 
             {/* Hours */}
@@ -423,6 +649,40 @@ export default function CreateTaskView() {
                 placeholder="Chọn giờ"
                 icon={Clock}
               />
+            </div>
+
+            {/* Start Date */}
+            <div className="mb-3.5">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">
+                Ngày bắt đầu
+              </label>
+              <input
+                type="datetime-local"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                readOnly
+                className="input-like w-full text-sm"
+              />
+              <p className="text-[10px] text-[var(--text-tertiary)] mt-1">
+                Tự động tính theo giờ làm việc: sáng 8h-12h, chiều 13h-17h (nghỉ trưa 12h-13h)
+              </p>
+            </div>
+
+            {/* Due Date */}
+            <div className="mb-3.5">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">
+                Ngày kết thúc
+              </label>
+              <input
+                type="datetime-local"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                readOnly
+                className="input-like w-full text-sm"
+              />
+              <p className="text-[10px] text-[var(--text-tertiary)] mt-1">
+                Tự động tính theo giờ làm việc: sáng 8h-12h, chiều 13h-17h (nghỉ trưa 12h-13h)
+              </p>
             </div>
 
             {/* Sprint */}
@@ -440,7 +700,7 @@ export default function CreateTaskView() {
             </div>
 
             {/* Assignee */}
-            <div className="mb-5">
+            <div className="mb-3.5">
               <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">
                 Người thực hiện
               </label>
@@ -453,6 +713,25 @@ export default function CreateTaskView() {
               />
             </div>
 
+            {/* Component */}
+            <div className="mb-5">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">
+                Component
+              </label>
+              <PopoverSelect
+                value={component}
+                onChange={setComponent}
+                options={components}
+                placeholder="Chọn Component"
+                icon={Layers}
+              />
+            </div>
+
+            {/* DEBUG: remove after fix */}
+            <div className="text-[10px] text-[var(--text-tertiary)] mb-1">
+              name:{taskName.length} days:{selectedDays.length} hours:{String(hours).length}
+            </div>
+
             {/* Create / Reset buttons */}
             <div className="flex items-center gap-2">
               <button
@@ -461,6 +740,9 @@ export default function CreateTaskView() {
                   setHours('');
                   setSprint('');
                   setAssignee('');
+                  setStartDate('');
+                  setDueDate('');
+                  setComponent('');
                   setSelectedDays([]);
                 }}
                 className="h-9 w-9 flex items-center justify-center rounded-lg border border-[var(--border-primary)] hover:bg-[var(--bg-secondary)] text-[var(--text-tertiary)] hover:text-[var(--danger)] transition-colors cursor-pointer flex-shrink-0"
@@ -493,7 +775,7 @@ export default function CreateTaskView() {
                 animate={{ opacity: 1, y: 0 }}
                 className="mt-3 text-xs text-center text-[var(--success)] font-medium"
               >
-                ✓ Đã tạo {selectedDays.length} công việc thành công!
+                {createResult || '✓ Đã tạo công việc thành công!'}
               </motion.div>
             )}
 

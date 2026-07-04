@@ -153,7 +153,7 @@ export default function Sidebar() {
               setWeeklyExpanded(!weeklyExpanded);
             } else {
               // Navigate to work-plan and expand
-              navigate('/work-plan/weekly');
+              navigate('/work-plan/create');
               setWeeklyExpanded(true);
             }
           }}
@@ -185,10 +185,10 @@ export default function Sidebar() {
         {/* Weekly Planner sub-items */}
           {!sidebarCollapsed && weeklyExpanded && (
           <div className="ml-5 space-y-0.5 mb-1">
-            <SubItem icon={Calendar} label={t('sidebar.weeklyTasks')} isActive={isWeeklyPlanner && location.pathname === '/work-plan/weekly'}
-              onClick={() => navigate('/work-plan/weekly')} />
             <SubItem icon={PlusCircle} label={t('sidebar.createTask')} isActive={isWeeklyPlanner && location.pathname === '/work-plan/create'}
               onClick={() => navigate('/work-plan/create')} />
+            <SubItem icon={Calendar} label={t('sidebar.weeklyTasks')} isActive={isWeeklyPlanner && location.pathname === '/work-plan/weekly'}
+              onClick={() => navigate('/work-plan/weekly')} />
           </div>
         )}
 

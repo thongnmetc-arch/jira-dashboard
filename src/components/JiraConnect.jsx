@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Wifi, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, LogIn, LogOut, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Wifi, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 import StepIndicator from './StepIndicator';
 import { useApp } from '../context/AppContext';
 import { useI18n } from '../i18n';
@@ -16,37 +16,6 @@ export default function JiraConnect({ mode, onConnected, onBack }) {
   const [showToken, setShowToken] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [jiraError, setJiraError] = useState('');
-  const [cookieLoginStatus, setCookieLoginStatus] = useState(null); // null | 'loading' | 'loggedin' | 'error'
-
-  // Electron: check cookie-based login status on mount + listen for login success
-  useEffect(() => {
-    let cleanup = null;
-
-    async function init() {
-      if (window.electronAPI?.isElectron) {
-        // Check if cookies exist
-        try {
-          const status = await window.electronAPI.jiraLoginStatus();
-          if (status.loggedIn) {
-            setCookieLoginStatus('loggedin');
-          }
-        } catch (e) {
-          console.warn('Failed to check cookie login status:', e);
-        }
-
-        // Listen for login-success from main process
-        cleanup = window.electronAPI.onLoginSuccess(() => {
-          setCookieLoginStatus('loggedin');
-        });
-      }
-    }
-
-    init();
-
-    return () => {
-      if (cleanup) cleanup();
-    };
-  }, []);
 
   // On mount, try loading saved config (from Electron store or localStorage)
   useEffect(() => {
@@ -181,115 +150,6 @@ export default function JiraConnect({ mode, onConnected, onBack }) {
     dispatch({ type: 'SET_JIRA_CONNECTED', payload: false });
   }, [dispatch]);
 
-  // ── Cookie-based login (Electron SSO) ──────────────────────────────
-
-  // Open JIRA login window (Microsoft SSO)
-  const handleCookieLogin = useCallback(async () => {
-    setJiraError('');
-    setCookieLoginStatus('loading');
-    try {
-      await window.electronAPI.jiraLogin();
-      // The login-success event (caught by useEffect above) will set status to 'loggedin'
-    } catch (err) {
-      setJiraError(t('connect.title') + ': ' + err.message);
-      setCookieLoginStatus('error');
-    }
-  }, [t]);
-
-  // After cookie login succeeds, fetch data using cookie-based API
-  const handleCookieFetchData = useCallback(async (projectKey) => {
-    if (!projectKey) {
-      setJiraError(t('connect.enterProject'));
-      return;
-    }
-    setConnecting(true);
-    setJiraError('');
-    setConnectSuccess(false);
-
-    try {
-      // Step 1: Test connection with cookies (no token needed)
-      const testResult = await testJiraConnection('', '');
-      if (!testResult.success) {
-        setJiraError(testResult.error);
-        setConnecting(false);
-        return;
-      }
-
-      // In wizard mode: only test connection
-      if (isWizard) {
-        setConnectSuccess(true);
-        setConnecting(false);
-        return;
-      }
-
-      // Step 2: Fetch issues using cookie-based API (no url/email/token)
-      const tasks = await fetchJiraIssues('', '', projectKey.trim().toUpperCase(), form.assignee.trim(), form.jql);
-
-      if (tasks.length === 0) {
-        setJiraError(t('connect.testError'));
-        setConnecting(false);
-        return;
-      }
-
-      const activeTasks = tasks.filter(t => { const s = t.status?.toLowerCase(); return s === 'resolved' || s === 'closed'; });
-      const totalHr = activeTasks.reduce((s, t) => s + t.timeSpentHr, 0);
-      const totalEst = activeTasks.reduce((s, t) => s + (t.originalEstimateHr || t.estimateHr || 0), 0);
-      const stats = `${activeTasks.length} ${t('common.tasks')} · ${totalHr.toFixed(1)}h`;
-
-      // Save JIRA config (project key only, no token needed)
-      const configToSave = { url: JIRA_URL, token: '', projectKey: projectKey.trim().toUpperCase(), assignee: form.assignee.trim(), jql: form.jql };
-      if (window.electronAPI?.isElectron) {
-        try {
-          await window.electronAPI.storeSet('jira-config', configToSave);
-        } catch (e) {
-          console.warn('Failed to save config to Electron store:', e);
-        }
-      }
-
-      dispatch({ type: 'SET_JIRA_CONFIG', payload: configToSave });
-      dispatch({ type: 'SET_JIRA_CONNECTED', payload: true });
-      dispatch({ type: 'SET_DATA_SOURCE', payload: 'jira' });
-      dispatch({ type: 'SET_FILE_INFO', payload: { fileName: projectKey.trim().toUpperCase(), fileStats: stats } });
-      dispatch({ type: 'SET_TASKS', payload: tasks });
-      dispatch({ type: 'SET_OT_LEAVE', payload: { otTotal: 0, leaveTotal: 0 } });
-      try { localStorage.removeItem('jira-dash-ot-leave'); } catch(e) {}
-      dispatch({ type: 'SET_JQL_USED', payload: form.jql ? form.jql.trim().replace(/\n/g, ' ') : '' });
-      dispatch({ type: 'SET_LAST_REFRESH_TIME', payload: new Date().toISOString() });
-    } catch (err) {
-      setJiraError(err.message || t('common.error'));
-    } finally {
-      setConnecting(false);
-    }
-  }, [form, dispatch, isWizard, t]);
-
-  // Auto-fetch data when cookie login succeeds (if user has already filled project key)
-  useEffect(() => {
-    let cleanup = null;
-    if (window.electronAPI?.isElectron) {
-      cleanup = window.electronAPI.onLoginSuccess(async () => {
-        setCookieLoginStatus('loggedin');
-        if (isWizard) {
-          // In wizard mode, just test connection on successful login
-          const testResult = await testJiraConnection('', '');
-          if (testResult.success) {
-            setConnectSuccess(true);
-          } else {
-            setJiraError(testResult.error);
-          }
-          return;
-        }
-        // If user already entered a project key, auto-fetch
-        if (form.projectKey.trim()) {
-          await handleCookieFetchData(form.projectKey);
-        }
-      });
-    }
-    return () => {
-      if (cleanup) cleanup();
-    };
-  }, [form.projectKey, handleCookieFetchData, isWizard]);
-
-  const JIRA_URL = 'https://20.84.97.109:3033';
 
   const handleProceed = useCallback(() => {
     if (onConnected) {
@@ -377,84 +237,7 @@ export default function JiraConnect({ mode, onConnected, onBack }) {
           </motion.div>
         )}
 
-        {/* Electron: In-app JIRA login (SSO) */}
-        {window.electronAPI?.isElectron && (
-          <div className="p-4 rounded-xl bg-[var(--accent-light)] border border-[var(--accent)]/30 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <LogIn className="w-4 h-4 text-[var(--accent)]" />
-              <span className="text-sm font-semibold text-[var(--accent)]">
-                {t('connect.title')} (SSO)
-              </span>
-              {cookieLoginStatus === 'loggedin' && (
-                <span className="text-xs bg-[var(--success)]/10 text-[var(--success)] px-2 py-0.5 rounded-full ml-auto">
-                  {t('common.success')}
-                </span>
-              )}
-            </div>
 
-            <p className="text-xs text-[var(--accent)] mb-3">
-              {t('connect.title')} — {t('connect.optional')}
-            </p>
-
-            {cookieLoginStatus === 'loggedin' ? (
-              <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={form.projectKey}
-                    onChange={(e) => handleFormChange('projectKey', e.target.value.toUpperCase())}
-                    placeholder="BXDBE"
-                    className="w-full px-3.5 py-2.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl font-mono text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] transition-all uppercase"
-                    disabled={connecting}
-                  />
-                  <button
-                    onClick={() => handleCookieFetchData(form.projectKey)}
-                    disabled={connecting || !form.projectKey.trim()}
-                    className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shadow-[var(--accent)]/20"
-                >
-                  {connecting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      {isWizard ? t('common.loading') : t('common.loading')}
-                    </>
-                  ) : (
-                    <>
-                      <Wifi className="w-4 h-4" />
-                      {isWizard ? t('connect.test') : t('connect.connectBtn')}
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={async () => {
-                    await window.electronAPI.jiraLogout();
-                    setCookieLoginStatus(null);
-                  }}
-                  className="w-full py-1.5 text-xs text-[var(--accent)] hover:underline cursor-pointer flex items-center justify-center gap-1"
-                >
-                  <LogOut className="w-3 h-3" />
-                  {t('common.logout')}
-                </button>
-              </div>
-            ) : (
-                <button
-                  onClick={handleCookieLogin}
-                  disabled={cookieLoginStatus === 'loading'}
-                  className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-medium text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shadow-[var(--accent)]/20"
-              >
-                {cookieLoginStatus === 'loading' ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    {t('common.loading')}
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="w-4 h-4" />
-                    {t('connect.title')} (SSO)
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        )}
 
         {/* URL */}
         <div>

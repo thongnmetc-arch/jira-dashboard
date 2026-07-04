@@ -216,7 +216,15 @@ export default function WeeklyPlanner() {
   // ── Load JIRA tasks ──
 
   async function loadJiraTasks() {
-    const { url, assignee, token, projectKey, jql } = state.jiraConfig || {};
+    // Try state first, fall back to localStorage (for when outer AppProvider doesn't have config)
+    let config = state.jiraConfig;
+    if (!config?.url) {
+      try {
+        const saved = localStorage.getItem('jira-dash-config');
+        if (saved) config = JSON.parse(saved);
+      } catch(e) {}
+    }
+    const { url, assignee, token, projectKey, jql } = config || {};
     if (!url || !token || !projectKey) return;
 
     try {
