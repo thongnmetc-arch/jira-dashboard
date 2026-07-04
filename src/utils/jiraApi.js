@@ -589,3 +589,136 @@ function parseJiraIssue(issue) {
     labels: fields.labels || [],
   };
 }
+
+// ── Fetch single issue by key ────────────────────────────────────────────
+
+export async function fetchIssueByKey(url, token, issueKey) {
+  const baseUrl = buildBaseUrl(url);
+  const apiPath = `/api/jira/rest/api/latest/issue/${encodeURIComponent(issueKey)}`;
+  const auth = buildAuth(token);
+
+  // Electron desktop app
+  if (window.electronAPI?.isElectron) {
+    const response = await window.electronAPI.jiraFetch(`${baseUrl}/rest/api/latest/issue/${encodeURIComponent(issueKey)}`, {
+      headers: { 'Authorization': auth, 'Accept': 'application/json' }
+    });
+    if (response.status >= 200 && response.status < 300) {
+      return JSON.parse(response.body);
+    }
+    throw new Error(`Lỗi ${response.status}: ${(response.body || '').substring(0, 300)}`);
+  }
+
+  // Browser — Vite proxy
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(apiPath, {
+      method: 'GET',
+      headers: {
+        'Authorization': auth,
+        'Accept': 'application/json',
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      let errorText = '';
+      try { errorText = await res.text(); } catch (e) { /* ignore */ }
+      throw new Error(`Lỗi ${res.status}: ${errorText.substring(0, 300) || res.statusText}`);
+    }
+
+    return await res.json();
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err.name === 'AbortError') throw new Error('Kết nối quá thời gian.');
+    throw err;
+  }
+}
+
+// ── Create Issue ─────────────────────────────────────────────────────────
+
+/**
+ * Create a JIRA issue via POST /rest/api/latest/issue
+ * @param {string} url        - JIRA base URL
+ * @param {string} token      - API token
+ * @param {string} projectKey - Project key (e.g. "BXDBE")
+ * @param {object} issueData  - { issueType, summary, description, assignee, sprint, startDate, dueDate, originalEstimate }
+ * @returns {Promise<object>} JIRA API response with key, id, self
+ */
+export async function createIssue(url, token, projectKey, issueData) {
+  const baseUrl = buildBaseUrl(url);
+
+  const body = {
+    fields: {
+      project: { key: projectKey },
+      issuetype: { name: issueData.issueType || 'Task' },
+      summary: issueData.summary,
+      description: issueData.description || '',
+      assignee: issueData.assignee ? { name: issueData.assignee } : undefined,
+      customfield_10206: issueData.sprint || undefined,
+      customfield_10300: issueData.startDate || undefined,
+      customfield_10302: issueData.dueDate || undefined,
+      timetracking: issueData.originalEstimate
+        ? { originalEstimate: (String(issueData.originalEstimate).includes('h') ? issueData.originalEstimate : issueData.originalEstimate + 'h') }
+        : undefined,
+    }
+  };
+
+  // Remove undefined fields
+  Object.keys(body.fields).forEach(k => body.fields[k] === undefined && delete body.fields[k]);
+
+  const auth = buildAuth(token);
+
+  // Electron desktop app
+  if (window.electronAPI?.isElectron) {
+    const apiUrl = `${baseUrl}/rest/api/latest/issue`;
+    const response = await window.electronAPI.jiraFetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': auth,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (response.status >= 200 && response.status < 300) {
+      return JSON.parse(response.body);
+    }
+    throw new Error(`Lỗi ${response.status}: ${(response.body || '').substring(0, 300)}`);
+  }
+
+  // Browser — Vite proxy
+  const apiPath = `/api/jira/rest/api/latest/issue`;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(apiPath, {
+      method: 'POST',
+      headers: {
+        'Authorization': auth,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      let errorText = '';
+      try { errorText = await res.text(); } catch (e) { /* ignore */ }
+      throw new Error(`Lỗi ${res.status}: ${errorText.substring(0, 300) || res.statusText}`);
+    }
+
+    return await res.json();
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err.name === 'AbortError') throw new Error('Kết nối quá thời gian khi tạo issue.');
+    throw err;
+  }
+}

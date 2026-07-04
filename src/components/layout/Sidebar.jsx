@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -13,6 +13,7 @@ import {
   Table,
   BarChart3,
   CalendarRange,
+  PlusCircle,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useI18n } from '../../i18n';
@@ -40,11 +41,18 @@ export default function Sidebar() {
   const { state, dispatch } = useApp();
   const { sidebarCollapsed, activeSection, dashboardTab } = state;
   const [dashboardExpanded, setDashboardExpanded] = useState(true);
+  const [weeklyExpanded, setWeeklyExpanded] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
-  const isDashboardActive = activeSection === 'dashboard' && location.pathname !== '/weekly-planner';
-  const isWeeklyPlanner = location.pathname === '/weekly-planner';
+  useEffect(() => {
+    if (location.pathname.startsWith('/work-plan')) {
+      setWeeklyExpanded(true);
+    }
+  }, [location.pathname]);
+
+  const isDashboardActive = activeSection === 'dashboard' && !location.pathname.startsWith('/work-plan');
+  const isWeeklyPlanner = location.pathname.startsWith('/work-plan');
 
   const toggleCollapse = () => {
     dispatch({ type: 'SET_SIDEBAR_COLLAPSED', payload: !sidebarCollapsed });
@@ -87,7 +95,7 @@ export default function Sidebar() {
         {/* Dashboard parent */}
         <motion.button
           onClick={() => {
-            navigate('/dashboard');
+            navigate('/dashboard/overview');
             setDashboardExpanded(!dashboardExpanded);
           }}
           whileHover={{ scale: 1.02 }}
@@ -138,9 +146,12 @@ export default function Sidebar() {
           )}
         </AnimatePresence>
 
-        {/* Lên lịch tuần */}
+        {/* Weekly Planner parent */}
         <motion.button
-          onClick={() => navigate('/weekly-planner')}
+          onClick={() => {
+            navigate('/work-plan/weekly');
+            setWeeklyExpanded(!weeklyExpanded);
+          }}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
@@ -152,9 +163,22 @@ export default function Sidebar() {
         >
           <Calendar className={`w-4 h-4 flex-shrink-0 ${isWeeklyPlanner ? 'text-[var(--accent)]' : ''}`} />
           {!sidebarCollapsed && (
-            <span className="truncate">{t('sidebar.weeklyPlanner')}</span>
+            <>
+              <span className="truncate flex-1 text-left">{t('sidebar.weeklyPlanner')}</span>
+              <ChevronDown className={`w-3 h-3 transition-transform ${weeklyExpanded ? 'rotate-180' : ''}`} />
+            </>
           )}
         </motion.button>
+
+        {/* Weekly Planner sub-items */}
+          {!sidebarCollapsed && weeklyExpanded && (
+          <div className="ml-5 space-y-0.5 mb-1">
+            <SubItem icon={Calendar} label={t('sidebar.weeklyTasks')} isActive={isWeeklyPlanner && location.pathname === '/work-plan/weekly'}
+              onClick={() => navigate('/work-plan/weekly')} />
+            <SubItem icon={PlusCircle} label={t('sidebar.createTask')} isActive={isWeeklyPlanner && location.pathname === '/work-plan/create'}
+              onClick={() => navigate('/work-plan/create')} />
+          </div>
+        )}
 
         {/* Bookmarklet */}
         <button

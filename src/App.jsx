@@ -211,7 +211,7 @@ function ConnectRoute() {
             dispatch({ type: 'SET_WIZARD_JIRA_CONFIG', payload: config });
             navigate('/projects');
           }}
-          onBack={() => navigate('/')}
+          onBack={() => navigate('/login')}
         />
       </div>
     </div>
@@ -263,7 +263,7 @@ function QueryRoute() {
           selectedProject={state.wizardSelectedProject}
           onStart={(config) => {
             dispatch({ type: 'SET_WIZARD_QUERY_CONFIG', payload: config });
-            navigate('/dashboard');
+            navigate('/dashboard/overview');
           }}
           onBack={() => navigate('/projects')}
         />
@@ -301,8 +301,8 @@ function DashboardRoute() {
   );
 }
 
-/** Route: /weekly-planner — Weekly planner view */
-function WeeklyPlannerRoute() {
+/** Route: /work-plan/:tab — Work plan views (weekly planner, create task) */
+function WorkPlanRoute({ tab }) {
   const navigate = useNavigate();
 
   const handleChangeProject = useCallback(() => {
@@ -312,7 +312,7 @@ function WeeklyPlannerRoute() {
   return (
     <AppProvider onChangeProject={handleChangeProject}>
       <AppShell>
-        <WeeklyPlanner />
+        <WeeklyPlanner initialTab={tab} />
       </AppShell>
     </AppProvider>
   );
@@ -325,13 +325,14 @@ export default function App() {
     <AppProvider>
       <Routes>
         <Route path="/login" element={<LoginRoute />} />
-        <Route path="/" element={<ProtectedRoute><Navigate to="/connect" replace /></ProtectedRoute>} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/connect" element={<ProtectedRoute><ConnectRoute /></ProtectedRoute>} />
         <Route path="/projects" element={<ProtectedRoute><ProjectsRoute /></ProtectedRoute>} />
         <Route path="/query" element={<ProtectedRoute><QueryRoute /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><DashboardRoute /></ProtectedRoute>} />
         <Route path="/dashboard/:tab" element={<ProtectedRoute><DashboardRoute /></ProtectedRoute>} />
-        <Route path="/weekly-planner" element={<ProtectedRoute><WeeklyPlannerRoute /></ProtectedRoute>} />
+        <Route path="/work-plan/weekly" element={<ProtectedRoute><WorkPlanRoute tab="planner" /></ProtectedRoute>} />
+        <Route path="/work-plan/create" element={<ProtectedRoute><WorkPlanRoute tab="createtask" /></ProtectedRoute>} />
       </Routes>
     </AppProvider>
   );

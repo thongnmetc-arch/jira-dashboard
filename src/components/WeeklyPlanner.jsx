@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronLeft,
@@ -9,6 +10,7 @@ import {
   Save,
   Send,
   CheckCircle2,
+  Calendar,
   Clock,
   AlertCircle,
   Loader2,
@@ -18,6 +20,7 @@ import { useApp } from '../context/AppContext';
 import { useI18n } from '../i18n';
 import { logMultipleWorklogs } from '../utils/jiraWorklog';
 import { fetchJiraIssues } from '../utils/jiraApi';
+import CreateTaskPanel from './CreateTaskPanel';
 
 const STORAGE_KEY = 'jira-dash-weekly-plan';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
@@ -393,10 +396,10 @@ function DayColumn({ day, dayDate, tasks, weekKey, onUpdate, onDelete, onAdd, on
   const isUnder = dayTotal < MIN_HOURS_PER_DAY;
 
   return (
-    <div className={`flex flex-col rounded-xl border ${
+    <div className={`flex flex-col rounded-2xl border-2 overflow-hidden ${
       isToday 
-        ? 'border-[var(--accent)] ring-1 ring-[var(--accent)]/30 shadow-md' 
-        : 'border-[var(--border-primary)] shadow-sm'
+        ? 'border-blue-400 dark:border-blue-500 ring-2 ring-blue-400/30 shadow-lg shadow-blue-500/10' 
+        : 'border-slate-200 dark:border-slate-700 shadow-md hover:shadow-lg transition-shadow'
     }`}>
       {/* Day header — calendar style */}
       <div className={`px-3 py-2 text-center ${isToday ? 'bg-[var(--accent-light)]' : 'bg-[var(--bg-secondary)]'}`}>
@@ -426,20 +429,13 @@ function DayColumn({ day, dayDate, tasks, weekKey, onUpdate, onDelete, onAdd, on
 
       </div>
 
-      {/* Add button at bottom */}
-      <button
-        onClick={() => onAdd(day)}
-        className="w-full py-2 text-[11px] font-medium text-[var(--text-tertiary)] hover:text-[var(--accent)] hover:bg-[var(--accent-light)] border-t border-[var(--border-primary)] transition-colors cursor-pointer"
-      >
-        + {t('planner.addTask')}
-      </button>
     </div>
   );
 }
 
 // ── Weekly Planner ──────────────────────────────────────────────────────────
 
-export default function WeeklyPlanner() {
+export default function WeeklyPlanner({ initialTab }) {
   const { t } = useI18n();
   const { state, dispatch } = useApp();
 
@@ -450,6 +446,12 @@ export default function WeeklyPlanner() {
   // Plan data: { Mon: [...], Tue: [...], ... }
   const [plan, setPlan] = useState(() => loadPlan(weekKey) || createWeekPlan());
 
+  // Tab state
+  const [searchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const resolvedTab = initialTab || tabFromUrl || 'planner';
+  const [plannerTab, setPlannerTab] = useState(resolvedTab);
+
   // Logging state
   const [logging, setLogging] = useState(false);
   const [logResults, setLogResults] = useState(null); // { success, failed }
@@ -458,6 +460,7 @@ export default function WeeklyPlanner() {
   const [autoRefresh, setAutoRefresh] = useState('off'); // 'off' | '5' | '15' | '30' | '60'
   const [lastSyncTime, setLastSyncTime] = useState(null);
   const intervalRef = useRef(null);
+  const lastLoadedWeek = useRef('');
 
   const AUTO_REFRESH_OPTIONS = [
     { value: 'off', label: 'Tắt' },
@@ -469,6 +472,8 @@ export default function WeeklyPlanner() {
 
   // Load JIRA tasks every time the week changes (always fetches fresh data)
   useEffect(() => {
+    if (lastLoadedWeek.current === weekKey) return;
+    lastLoadedWeek.current = weekKey;
     loadJiraTasks();
     setLogResults(null);
     setSaveMessage('');
@@ -785,141 +790,177 @@ export default function WeeklyPlanner() {
       exit={{ opacity: 0, y: 8 }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
     >
-      {/* ── Header: Calendar-style week title ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <button onClick={goPrevWeek} className="p-1.5 rounded-lg hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)]"><ChevronLeft className="w-4 h-4" /></button>
-          <button onClick={goCurrentWeek} className="px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-sm font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]">
-            📅 {formatDate(mondayDate)} – {formatDate(fridayDate)}
-          </button>
-          <button onClick={goNextWeek} className="p-1.5 rounded-lg hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)]"><ChevronRight className="w-4 h-4" /></button>
-        </div>
+      {/* ── Tab bar ── */}
+      <div className="flex items-center gap-1 mb-4 p-1 bg-[var(--bg-secondary)] rounded-xl w-fit">
+        <button
+          onClick={() => setPlannerTab('planner')}
+          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
+            plannerTab === 'planner'
+              ? 'bg-[var(--accent)] text-white shadow-sm'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)]'
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
+          Lịch tuần
+        </button>
+
+        <button
+          onClick={() => setPlannerTab('createtask')}
+          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
+            plannerTab === 'createtask'
+              ? 'bg-[var(--accent)] text-white shadow-sm'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)]'
+          }`}
+        >
+          <Plus className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
+          Tạo task
+        </button>
       </div>
 
-      {/* ── Sync status row ── */}
-      {state.jiraConfig?.url && (
-        <div className="flex flex-wrap items-center gap-3 px-3 py-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)]/50 mb-4">
-          {/* Sync status */}
-          <div className="flex items-center gap-2 text-xs text-[var(--text-tertiary)]">
-            <RefreshCw className="w-3 h-3" />
-            {lastSyncTime ? (
-              <span>Đồng bộ lúc {lastSyncTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
-            ) : (
-              <span>Chưa đồng bộ</span>
-            )}
+      {plannerTab === 'planner' && (
+        <>
+          {/* ── Header: Calendar-style week title ── */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <button onClick={goPrevWeek} className="p-1.5 rounded-lg hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)]"><ChevronLeft className="w-4 h-4" /></button>
+              <button onClick={goCurrentWeek} className="px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-sm font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]">
+                📅 {formatDate(mondayDate)} – {formatDate(fridayDate)}
+              </button>
+              <button onClick={goNextWeek} className="p-1.5 rounded-lg hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)]"><ChevronRight className="w-4 h-4" /></button>
+            </div>
           </div>
-          
-          <div className="flex-1" />
-          
-          {/* Progress bar */}
-          <span className="text-xs text-[var(--text-secondary)] whitespace-nowrap">
-            <strong className="text-[var(--text-primary)]">{totalHours.toFixed(1)}h</strong> / {TARGET_WEEKLY_HOURS}h
-          </span>
-          <div className="w-28 h-2 bg-[var(--bg-primary)] rounded-full overflow-hidden">
-            <motion.div initial={{width:0}} animate={{width:progressPct+'%'}} transition={{duration:0.5}}
-              className={`h-full rounded-full ${progressPct>=100 ? 'bg-[var(--success)]' : 'bg-[var(--accent)]'}`} />
-          </div>
-          
-          {/* Log result inline (compact) */}
-          {logResults && (
-            <span className={`text-xs px-2 py-0.5 rounded-full ${
-              logResults.failed.length === 0 
-                ? 'bg-[var(--success)]/10 text-[var(--success)]' 
-                : 'bg-[var(--danger)]/10 text-[var(--danger)]'
-            }`}>
-              {logResults.success.length > 0 && `${logResults.success.length} ✅ `}
-              {logResults.failed.length > 0 && `${logResults.failed.length} ❌`}
-            </span>
+
+          {/* ── Sync status row ── */}
+          {state.jiraConfig?.url && (
+            <div className="flex flex-wrap items-center gap-3 px-3 py-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)]/50 mb-4">
+              {/* Sync status */}
+              <div className="flex items-center gap-2 text-xs text-[var(--text-tertiary)]">
+                <RefreshCw className="w-3 h-3" />
+                {lastSyncTime ? (
+                  <span>Đồng bộ lúc {lastSyncTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                ) : (
+                  <span>Chưa đồng bộ</span>
+                )}
+              </div>
+              
+              <div className="flex-1" />
+              
+              {/* Progress bar */}
+              <span className="text-xs text-[var(--text-secondary)] whitespace-nowrap">
+                <strong className="text-[var(--text-primary)]">{totalHours.toFixed(1)}h</strong> / {TARGET_WEEKLY_HOURS}h
+              </span>
+              <div className="w-28 h-2 bg-[var(--bg-primary)] rounded-full overflow-hidden">
+                <motion.div initial={{width:0}} animate={{width:progressPct+'%'}} transition={{duration:0.5}}
+                  className={`h-full rounded-full ${progressPct>=100 ? 'bg-[var(--success)]' : 'bg-[var(--accent)]'}`} />
+              </div>
+              
+              {/* Log result inline (compact) */}
+              {logResults && (
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  logResults.failed.length === 0 
+                    ? 'bg-[var(--success)]/10 text-[var(--success)]' 
+                    : 'bg-[var(--danger)]/10 text-[var(--danger)]'
+                }`}>
+                  {logResults.success.length > 0 && `${logResults.success.length} ✅ `}
+                  {logResults.failed.length > 0 && `${logResults.failed.length} ❌`}
+                </span>
+              )}
+              
+              {/* Sync now button */}
+              <button onClick={loadJiraTasks} disabled={loadingJira}
+                className="h-7 text-xs px-2.5 rounded-md border border-[var(--border-primary)] hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] transition-colors disabled:opacity-50 flex items-center gap-1">
+                {loadingJira ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                Đồng bộ
+              </button>
+              
+              {/* Auto-refresh — force same h-7 */}
+              <div className="h-7">
+                <Dropdown
+                  value={autoRefresh}
+                  onChange={setAutoRefresh}
+                  options={AUTO_REFRESH_OPTIONS}
+                  className="h-7"
+                />
+              </div>
+            </div>
           )}
-          
-          {/* Sync now button */}
-          <button onClick={loadJiraTasks} disabled={loadingJira}
-            className="h-7 text-xs px-2.5 rounded-md border border-[var(--border-primary)] hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] transition-colors disabled:opacity-50 flex items-center gap-1">
-            {loadingJira ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-            Đồng bộ
-          </button>
-          
-          {/* Auto-refresh — force same h-7 */}
-          <div className="h-7">
-            <Dropdown
-              value={autoRefresh}
-              onChange={setAutoRefresh}
-              options={AUTO_REFRESH_OPTIONS}
-              className="h-7"
-            />
+
+          {/* ── Day columns ── */}
+          <div className="grid grid-cols-5 gap-3 mb-6 overflow-x-auto pb-2">
+            {DAYS.map((day, idx) => {
+              const dayDate = computeDayDate(monday, idx);
+              return (
+                <DayColumn
+                  key={day}
+                  day={day}
+                  dayDate={dayDate}
+                  tasks={plan[day] || []}
+                  weekKey={weekKey}
+                  onUpdate={updateTask}
+                  onDelete={deleteTask}
+                  onAdd={addTask}
+                  onLogOne={handleLogOne}
+                  allStatuses={allStatuses}
+                />
+              );
+            })}
           </div>
-        </div>
+
+          {/* ── Bottom actions ── */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-lg">
+            {/* Summary */}
+            <div className="text-xs text-[var(--text-tertiary)]">
+              {totalTasks} {t('common.tasks')} · {totalHours.toFixed(1)}h
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+              {saveMessage && (
+                <motion.span
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="text-xs text-[var(--success)] font-medium"
+                >
+                  {saveMessage}
+                </motion.span>
+              )}
+
+              <button
+                onClick={handleSave}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{t('planner.save')}</span>
+              </button>
+
+              {/* Log to JIRA button */}
+              <button
+                onClick={handleLogAll}
+                disabled={logging}
+                className="flex items-center gap-1.5 px-5 py-2 text-xs font-medium rounded-lg bg-[var(--accent)] text-white hover:opacity-90 disabled:opacity-50 transition-all cursor-pointer shadow-sm"
+              >
+                {logging ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>{t('planner.logging')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    <span>{t('planner.logToJira')}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
-      {/* ── Day columns ── */}
-      <div className="grid grid-cols-5 gap-3 mb-6 overflow-x-auto pb-2">
-        {DAYS.map((day, idx) => {
-          const dayDate = computeDayDate(monday, idx);
-          return (
-            <DayColumn
-              key={day}
-              day={day}
-              dayDate={dayDate}
-              tasks={plan[day] || []}
-              weekKey={weekKey}
-              onUpdate={updateTask}
-              onDelete={deleteTask}
-              onAdd={addTask}
-              onLogOne={handleLogOne}
-              allStatuses={allStatuses}
-            />
-          );
-        })}
-      </div>
 
-      {/* ── Bottom actions ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-lg">
-        {/* Summary */}
-        <div className="text-xs text-[var(--text-tertiary)]">
-          {totalTasks} {t('common.tasks')} · {totalHours.toFixed(1)}h
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          {saveMessage && (
-            <motion.span
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0 }}
-              className="text-xs text-[var(--success)] font-medium"
-            >
-              {saveMessage}
-            </motion.span>
-          )}
-
-          <button
-            onClick={handleSave}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-          >
-            <Save className="w-3.5 h-3.5" />
-            <span>{t('planner.save')}</span>
-          </button>
-
-          {/* Log to JIRA button */}
-          <button
-            onClick={handleLogAll}
-            disabled={logging}
-            className="flex items-center gap-1.5 px-5 py-2 text-xs font-medium rounded-lg bg-[var(--accent)] text-white hover:opacity-90 disabled:opacity-50 transition-all cursor-pointer shadow-sm"
-          >
-            {logging ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>{t('planner.logging')}</span>
-              </>
-            ) : (
-              <>
-                <Send className="w-3.5 h-3.5" />
-                <span>{t('planner.logToJira')}</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
+      {plannerTab === 'createtask' && (
+        <CreateTaskPanel />
+      )}
     </motion.div>
   );
 }
