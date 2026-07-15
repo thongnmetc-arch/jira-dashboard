@@ -1,5 +1,6 @@
 {
   "app": "jira-dashboard",
   "branch": "main",
-  "url": "https://github.com/thongnmetc-arch/jira-dashboard"
+  "url": "https://github.com/thongnmetc-arch/jira-dashboard",
+  "nodePort": 30434
 }
