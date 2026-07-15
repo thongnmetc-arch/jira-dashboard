@@ -1,0 +1,6 @@
+apps:
+  jira-dashboard:
+    image: registry.etc.vn/backend3/jira-dashboard:latest
+    containerPort: 80
+    nodePort: 30434
+    disableConfigMap: true

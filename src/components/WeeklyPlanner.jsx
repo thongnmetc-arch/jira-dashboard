@@ -267,7 +267,7 @@ export default function WeeklyPlanner() {
         newPlan[day].push({
           id: genId(),
           name: t.summary || t.key,
-          hours: Math.round((t.timeSpentHr || t.estimateHr || 1) * 2) / 2,
+          hours: Math.round(((t.originalEstimateHr || t.estimateHr || 1)) * 2) / 2,
           jiraKey: t.key,
           status: t.status || 'Open',
           issueType: t.issueType || 'Task',
