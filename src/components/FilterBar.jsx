@@ -111,7 +111,7 @@ export default function FilterBar() {
       animate={{ opacity: 1, y: 0 }}
       className="card mb-5"
     >
-      <div className="flex items-center gap-2 overflow-x-auto">
+      <div className="flex items-center gap-2 flex-wrap">
         {/* Sprint popover */}
         <FilterPopover
           label={t('filter.sprint')}
